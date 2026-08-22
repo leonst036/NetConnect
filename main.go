@@ -15,8 +15,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	overlayCIDR := "10.200.0.2/24"
-	targetSubnets := []string{"192.168.99.0/24"}
+	overlayCIDR, err := network.DetectCIDR()
+	if err != nil {
+		log.Fatalf("Error detecting CIDR: %v", err)
+	}
+	targetSubnets, err := network.DetectSubnets()
+	if err != nil {
+		log.Fatalf("Error detecting subnets: %v", err)
+	}
+	if len(targetSubnets) == 0 {
+		log.Fatalf("No target subnets found")
+	}
 
 	ifce := network.CreateVirtualDevice(overlayCIDR, targetSubnets)
 	defer ifce.Close()
@@ -45,6 +54,11 @@ func main() {
 			}
 
 			fmt.Printf("[IPv4] %s -> %s | %s | %d bytes\n", srcIP, dstIP, protoName, n)
+
+			// Reply to ICMP Echo Request
+			if protocol == 1 {
+				network.HandleICMPEcho(ifce, packet, n)
+			}
 		}
 	}
 }
