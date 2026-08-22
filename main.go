@@ -6,7 +6,10 @@ import (
 	"net"
 	"os"
 
+	"time"
+
 	"github.com/leonst036/NetConnect/network"
+	netlink "github.com/leonst036/NetConnect/network/NetLink"
 )
 
 func main() {
@@ -27,12 +30,16 @@ func main() {
 		log.Fatalf("No target subnets found")
 	}
 
-	ifce := network.CreateVirtualDevice(overlayCIDR, targetSubnets)
-	defer ifce.Close()
+	dev := network.CreateVirtualDevice(overlayCIDR, targetSubnets)
+	defer dev.Close()
+
+	// Start pinging NetLink relay
+	relayURL := getEnv("NETLINK_RELAY_URL", "localhost:5173")
+	netlink.StartPingLoop(relayURL, 5*time.Second)
 
 	packet := make([]byte, 1500)
 	for {
-		n, err := ifce.Read(packet)
+		n, err := dev.Read(packet)
 		if err != nil {
 			log.Fatalf("Error reading from interface: %v", err)
 		}
@@ -57,7 +64,7 @@ func main() {
 
 			// Reply to ICMP Echo Request
 			if protocol == 1 {
-				network.HandleICMPEcho(ifce, packet, n)
+				network.HandleICMPEcho(dev.Interface, packet, n)
 			}
 		}
 	}
