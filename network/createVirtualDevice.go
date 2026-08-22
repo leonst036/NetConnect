@@ -28,6 +28,9 @@ type Device struct {
 func CreateVirtualDevice(overlayCIDR string, targetSubnets []string) *Device {
 	config := water.Config{
 		DeviceType: water.TUN,
+		PlatformSpecificParams: water.PlatformSpecificParams{
+			Name: "netconnect0",
+		},
 	}
 
 	ifce, err := water.New(config)

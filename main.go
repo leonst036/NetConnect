@@ -5,11 +5,11 @@ import (
 	"log"
 	"net"
 	"os"
-
 	"time"
 
 	"github.com/leonst036/NetConnect/network"
 	netlink "github.com/leonst036/NetConnect/network/NetLink"
+	"github.com/leonst036/NetConnect/utils"
 )
 
 func main() {
@@ -34,7 +34,7 @@ func main() {
 	defer dev.Close()
 
 	// Start pinging NetLink relay
-	relayURL := getEnv("NETLINK_RELAY_URL", "localhost:5173")
+	relayURL := utils.GetEnv("NETLINK_RELAY_URL", "localhost:5173")
 	netlink.StartPingLoop(relayURL, 5*time.Second)
 
 	packet := make([]byte, 1500)
