@@ -3,13 +3,14 @@ import { Box, IconButton, Typography } from '@mui/material'
 import { WindowLayout } from '@netlink/ui'
 import SettingsIcon from '@mui/icons-material/Settings'
 import PowerSettingsNewIcon from '@mui/icons-material/PowerSettingsNew'
-import CloseIcon from '@mui/icons-material/Close'
 import './App.css'
 import { Connect } from "../wailsjs/go/main/App";
+import { Settings } from './components/Settings'
 
 function App() {
   const [isConnected, setIsConnected] = useState(true)
   const [serverName, setServerName] = useState('<server>')
+  const [deviceName, setDeviceName] = useState('<device>')
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   // Power button click handler with console log
@@ -75,53 +76,15 @@ function App() {
         {/* Bottom space for visual balance */}
         <Box className="netconnect-footer" />
 
-        {/* Settings Popup Modal with fixed dimensions */}
-        {isSettingsOpen && (
-          <div className="popup-overlay" onClick={handleCloseSettings}>
-            <div
-              className="popup-window"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="popup-header">
-                <Typography variant="h6" className="popup-title">
-                  Settings
-                </Typography>
-                <IconButton
-                  className="popup-close-btn"
-                  onClick={handleCloseSettings}
-                  size="small"
-                >
-                  <CloseIcon fontSize="small" />
-                </IconButton>
-              </div>
-
-              <div className="popup-body">
-                <label className="popup-label">Server Address</label>
-                <input
-                  type="text"
-                  className="popup-input"
-                  value={serverName}
-                  onChange={(e) => setServerName(e.target.value)}
-                  placeholder="e.g. 192.168.1.100"
-                />
-
-                <div className="popup-info">
-                  Hyprland popup window configuration active.
-                </div>
-              </div>
-
-              <div className="popup-footer">
-                <button
-                  type="button"
-                  className="popup-action-btn"
-                  onClick={handleCloseSettings}
-                >
-                  Save & Close
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Settings Popup Modal */}
+        <Settings
+          isSettingsOpen={isSettingsOpen}
+          handleCloseSettings={handleCloseSettings}
+          serverName={serverName}
+          setServerName={setServerName}
+          deviceName={deviceName}
+          setDeviceName={setDeviceName}
+        />
       </Box>
     </WindowLayout>
   )
