@@ -18,6 +18,22 @@ export function IsConnected() {
   return window['go']['main']['App']['IsConnected']();
 }
 
+export function Logout() {
+  return window['go']['main']['App']['Logout']();
+}
+
+export function OpenVerificationURL(arg1) {
+  return window['go']['main']['App']['OpenVerificationURL'](arg1);
+}
+
+export function PollDeviceLogin(arg1) {
+  return window['go']['main']['App']['PollDeviceLogin'](arg1);
+}
+
 export function SaveSettings(arg1, arg2) {
   return window['go']['main']['App']['SaveSettings'](arg1, arg2);
+}
+
+export function StartDeviceLogin(arg1, arg2) {
+  return window['go']['main']['App']['StartDeviceLogin'](arg1, arg2);
 }

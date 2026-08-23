@@ -15,6 +15,8 @@ function App() {
   const [errorMessage, setErrorMessage] = useState<string>('')
   const [serverName, setServerName] = useState('http://localhost:4535')
   const [deviceName, setDeviceName] = useState('netconnect-device')
+  const [username, setUsername] = useState<string>('')
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   // Fetch initial settings and connection status from Go backend on startup
@@ -23,6 +25,10 @@ function App() {
       .then((settings) => {
         if (settings.serverAddress) setServerName(settings.serverAddress)
         if (settings.deviceName) setDeviceName(settings.deviceName)
+        if (settings.username) setUsername(settings.username)
+        if (typeof settings.isAuthenticated === 'boolean') {
+          setIsAuthenticated(settings.isAuthenticated)
+        }
       })
       .catch((err) => {
         console.error('[NetConnect] Failed to load initial settings:', err)
@@ -163,8 +169,15 @@ function App() {
           )}
         </Box>
 
-        {/* Bottom space for visual balance */}
-        <Box className="netconnect-footer" />
+        {/* Bottom space / User badge */}
+        <Box className="netconnect-footer">
+          {isAuthenticated && (
+            <div className="user-badge-pill" onClick={handleSettingsClick} title="Authenticated with NetLink">
+              <span className="user-badge-dot" />
+              <span className="user-badge-text">{username || 'Linked'}</span>
+            </div>
+          )}
+        </Box>
 
         {/* Settings Popup Modal */}
         <Settings
@@ -174,6 +187,10 @@ function App() {
           setServerName={setServerName}
           deviceName={deviceName}
           setDeviceName={setDeviceName}
+          username={username}
+          setUsername={setUsername}
+          isAuthenticated={isAuthenticated}
+          setIsAuthenticated={setIsAuthenticated}
         />
       </Box>
     </WindowLayout>

@@ -13,14 +13,17 @@ import (
 	netlink "github.com/leonst036/NetConnect/network/NetLink"
 	"github.com/leonst036/NetConnect/network/NetLink/auth"
 	"github.com/leonst036/NetConnect/utils"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 const daemonBaseURL = "http://127.0.0.1:4545"
 
 // SettingsData represents the settings state exchanged with the frontend.
 type SettingsData struct {
-	ServerAddress string `json:"serverAddress"`
-	DeviceName    string `json:"deviceName"`
+	ServerAddress   string `json:"serverAddress"`
+	DeviceName      string `json:"deviceName"`
+	Username        string `json:"username,omitempty"`
+	IsAuthenticated bool   `json:"isAuthenticated"`
 }
 
 // App struct
@@ -65,20 +68,24 @@ func (a *App) isDaemonAvailable() bool {
 	return resp.StatusCode == http.StatusOK
 }
 
-// GetSettings returns current server address and device name.
+// GetSettings returns current server address, device name, and auth state.
 func (a *App) GetSettings() SettingsData {
 	if a.isDaemonAvailable() {
 		resp, err := a.httpClient.Get(daemonBaseURL + "/api/status")
 		if err == nil {
 			defer resp.Body.Close()
 			var data struct {
-				ServerAddress string `json:"serverAddress"`
-				DeviceName    string `json:"deviceName"`
+				ServerAddress   string `json:"serverAddress"`
+				DeviceName      string `json:"deviceName"`
+				Username        string `json:"username"`
+				IsAuthenticated bool   `json:"isAuthenticated"`
 			}
 			if err := json.NewDecoder(resp.Body).Decode(&data); err == nil && data.ServerAddress != "" {
 				return SettingsData{
-					ServerAddress: data.ServerAddress,
-					DeviceName:    data.DeviceName,
+					ServerAddress:   data.ServerAddress,
+					DeviceName:      data.DeviceName,
+					Username:        data.Username,
+					IsAuthenticated: data.IsAuthenticated,
 				}
 			}
 		}
@@ -89,8 +96,10 @@ func (a *App) GetSettings() SettingsData {
 		a.client = auth.GetOrCreateClient(relayURL)
 	}
 	return SettingsData{
-		ServerAddress: a.client.RelayURL(),
-		DeviceName:    a.client.TargetID(),
+		ServerAddress:   a.client.RelayURL(),
+		DeviceName:      a.client.TargetID(),
+		Username:        a.client.Username(),
+		IsAuthenticated: a.client.Token() != "",
 	}
 }
 
@@ -122,6 +131,101 @@ func (a *App) SaveSettings(serverAddress string, deviceName string) error {
 
 	fmt.Printf("[NetConnect GUI] Settings updated: server=%s, device=%s\n", a.client.RelayURL(), a.client.TargetID())
 	return nil
+}
+
+// StartDeviceLogin starts the web-based device authorization flow.
+func (a *App) StartDeviceLogin(serverAddress string, deviceName string) (*auth.DeviceCodeResponse, error) {
+	if a.isDaemonAvailable() {
+		body, _ := json.Marshal(map[string]string{
+			"serverAddress": serverAddress,
+			"deviceName":    deviceName,
+		})
+		resp, err := a.httpClient.Post(daemonBaseURL+"/api/auth/device-flow/start", "application/json", bytes.NewReader(body))
+		if err != nil {
+			return nil, fmt.Errorf("daemon device auth start failed: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+			var errData struct {
+				Error string `json:"error"`
+			}
+			_ = json.NewDecoder(resp.Body).Decode(&errData)
+			return nil, fmt.Errorf("device auth start failed: %s", errData.Error)
+		}
+
+		var res auth.DeviceCodeResponse
+		if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+			return nil, fmt.Errorf("invalid response from daemon: %w", err)
+		}
+		return &res, nil
+	}
+
+	if a.client == nil || (serverAddress != "" && a.client.RelayURL() != serverAddress) {
+		if serverAddress == "" {
+			serverAddress = utils.GetEnv("NETLINK_RELAY_URL", "http://localhost:4535")
+		}
+		a.client = auth.GetOrCreateClient(serverAddress)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	return a.client.StartDeviceAuth(ctx, deviceName)
+}
+
+// PollDeviceLogin checks if the user completed authentication and authorization in the web browser.
+func (a *App) PollDeviceLogin(deviceCode string) (*auth.DeviceTokenResponse, error) {
+	if a.isDaemonAvailable() {
+		body, _ := json.Marshal(map[string]string{
+			"device_code": deviceCode,
+		})
+		resp, err := a.httpClient.Post(daemonBaseURL+"/api/auth/device-flow/poll", "application/json", bytes.NewReader(body))
+		if err != nil {
+			return nil, fmt.Errorf("daemon device auth poll failed: %w", err)
+		}
+		defer resp.Body.Close()
+
+		var res auth.DeviceTokenResponse
+		if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+			return nil, fmt.Errorf("invalid response from daemon: %w", err)
+		}
+		return &res, nil
+	}
+
+	if a.client == nil {
+		relayURL := utils.GetEnv("NETLINK_RELAY_URL", "http://localhost:4535")
+		a.client = auth.GetOrCreateClient(relayURL)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	return a.client.PollDeviceAuth(ctx, deviceCode)
+}
+
+// Logout clears the user token and session.
+func (a *App) Logout() error {
+	if a.isDaemonAvailable() {
+		resp, err := a.httpClient.Post(daemonBaseURL+"/api/auth/logout", "application/json", nil)
+		if err != nil {
+			return fmt.Errorf("daemon logout failed: %w", err)
+		}
+		defer resp.Body.Close()
+	}
+
+	if a.client != nil {
+		a.client.Logout()
+	}
+
+	return nil
+}
+
+// OpenVerificationURL opens the NetLink web approval page in the default web browser.
+func (a *App) OpenVerificationURL(url string) {
+	if a.ctx != nil {
+		runtime.BrowserOpenURL(a.ctx, url)
+	}
 }
 
 // IsConnected returns whether the connection is active.
