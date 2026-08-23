@@ -127,6 +127,7 @@ func (c *Client) UpdateConfig(ctx context.Context, newRelayURL, newTargetID stri
 	c.mu.RLock()
 	curRelayURL := c.relayURL
 	curTargetID := c.targetID
+	hasToken := c.token != ""
 	c.mu.RUnlock()
 
 	targetRelayURL := strings.TrimSpace(newRelayURL)
@@ -141,6 +142,17 @@ func (c *Client) UpdateConfig(ctx context.Context, newRelayURL, newTargetID stri
 	targetDeviceName := strings.TrimSpace(newTargetID)
 	if targetDeviceName == "" {
 		targetDeviceName = curTargetID
+	}
+
+	// If client is already authenticated with a valid token on the same relay, keep it
+	if hasToken && targetRelayURL == curRelayURL {
+		c.mu.Lock()
+		c.relayURL = targetRelayURL
+		if targetDeviceName != "" {
+			c.targetID = targetDeviceName
+		}
+		c.mu.Unlock()
+		return nil
 	}
 
 	newToken, err := c.requestDeviceTokenFor(ctx, targetRelayURL, targetDeviceName)
