@@ -25,7 +25,7 @@ type Device struct {
 }
 
 // CreateVirtualDevice initializes the TUN device, assigns an overlay IP, and configures routes.
-func CreateVirtualDevice(overlayCIDR string, targetSubnets []string) *Device {
+func CreateVirtualDevice(overlayCIDR string, targetSubnets []string) (*Device, error) {
 	config := water.Config{
 		DeviceType: water.TUN,
 		PlatformSpecificParams: water.PlatformSpecificParams{
@@ -35,19 +35,26 @@ func CreateVirtualDevice(overlayCIDR string, targetSubnets []string) *Device {
 
 	ifce, err := water.New(config)
 	if err != nil {
-		log.Fatalf("Error creating TUN device: %v\n", err)
+		return nil, fmt.Errorf("error creating TUN device (requires root/CAP_NET_ADMIN): %w", err)
 	}
 
 	fmt.Printf("TUN device created: %s\n", ifce.Name())
 
 	// Bring the interface up and assign virtual overlay IP
-	runCmd("ip", "link", "set", "dev", ifce.Name(), "up")
-	runCmd("ip", "addr", "add", overlayCIDR, "dev", ifce.Name())
+	if err := runCmd("ip", "link", "set", "dev", ifce.Name(), "up"); err != nil {
+		_ = ifce.Close()
+		return nil, fmt.Errorf("failed bringing up %s: %w", ifce.Name(), err)
+	}
+	if err := runCmd("ip", "addr", "add", overlayCIDR, "dev", ifce.Name()); err != nil {
+		_ = ifce.Close()
+		return nil, fmt.Errorf("failed adding IP %s to %s: %w", overlayCIDR, ifce.Name(), err)
+	}
 
 	// Extract IP without subnet mask for preferred source address selection
 	srcIP, _, err := net.ParseCIDR(overlayCIDR)
 	if err != nil {
-		log.Fatalf("Invalid overlay CIDR: %v\n", err)
+		_ = ifce.Close()
+		return nil, fmt.Errorf("invalid overlay CIDR: %w", err)
 	}
 
 	// Add routes for target remote subnets if not locally present
@@ -63,8 +70,11 @@ func CreateVirtualDevice(overlayCIDR string, targetSubnets []string) *Device {
 			continue
 		}
 
-		runCmd("ip", "route", "add", subnet, "dev", ifce.Name(), "src", srcIP.String())
-		fmt.Printf("Route added: %s -> %s (src %s)\n", subnet, ifce.Name(), srcIP.String())
+		if err := runCmd("ip", "route", "add", subnet, "dev", ifce.Name(), "src", srcIP.String()); err != nil {
+			log.Printf("Warning: failed to add route for %s: %v\n", subnet, err)
+		} else {
+			fmt.Printf("Route added: %s -> %s (src %s)\n", subnet, ifce.Name(), srcIP.String())
+		}
 	}
 
 	return &Device{
@@ -73,7 +83,7 @@ func CreateVirtualDevice(overlayCIDR string, targetSubnets []string) *Device {
 		OverlayIP:     srcIP,
 		TargetSubnets: targetSubnets,
 		httpMux:       http.NewServeMux(),
-	}
+	}, nil
 }
 
 // Name returns the network interface name.
@@ -185,9 +195,10 @@ func (d *Device) Ping(targetURL string, timeout time.Duration) (string, error) {
 	return string(body), nil
 }
 
-func runCmd(name string, args ...string) {
+func runCmd(name string, args ...string) error {
 	cmd := exec.Command(name, args...)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		log.Fatalf("Failed to run %s %v: %s (%v)", name, args, string(out), err)
+		return fmt.Errorf("failed to run %s %v: %s (%w)", name, args, string(out), err)
 	}
+	return nil
 }

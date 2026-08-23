@@ -4,6 +4,10 @@ import {main} from '../models';
 
 export function Connect():Promise<void>;
 
+export function Disconnect():Promise<void>;
+
 export function GetSettings():Promise<main.SettingsData>;
+
+export function IsConnected():Promise<boolean>;
 
 export function SaveSettings(arg1:string,arg2:string):Promise<void>;

@@ -9,6 +9,7 @@
 /netconnect
 /NetConnect
 gui/app
+gui/gui
 *.exe
 *.exe~
 *.dll

@@ -33,6 +33,8 @@ NetConnect requires network administration privileges to create TUN interfaces a
   ./netconnect
   ```
 
+### You need to install the NetStore app net-graph for this to work
+
 ---
 
 ## Configuration

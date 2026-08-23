@@ -2,70 +2,35 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"net"
 	"os"
-	"time"
+	"os/signal"
+	"syscall"
 
-	"github.com/leonst036/NetConnect/network"
-	netlink "github.com/leonst036/NetConnect/network/NetLink"
+	"github.com/leonst036/NetConnect/daemon"
 	"github.com/leonst036/NetConnect/utils"
 )
 
 func main() {
 	if os.Geteuid() != 0 {
-		fmt.Println("Please run this program as root")
-		os.Exit(1)
+		fmt.Println("Notice: NetConnect Daemon is running without root. For TUN interface creation, run with sudo.")
 	}
 
-	overlayCIDR, err := network.DetectCIDR()
-	if err != nil {
-		log.Fatalf("Error detecting CIDR: %v", err)
-	}
-	targetSubnets, err := network.DetectSubnets()
-	if err != nil {
-		log.Fatalf("Error detecting subnets: %v", err)
-	}
-	if len(targetSubnets) == 0 {
-		log.Fatalf("No target subnets found")
-	}
+	relayURL := utils.GetEnv("NETLINK_RELAY_URL", "http://localhost:4535")
+	targetID := utils.GetEnv("NETLINK_TARGET_ID", "")
 
-	dev := network.CreateVirtualDevice(overlayCIDR, targetSubnets)
-	defer dev.Close()
+	srv := daemon.NewDaemonServer(relayURL, targetID)
 
-	// Start pinging NetLink relay
-	relayURL := utils.GetEnv("NETLINK_RELAY_URL", "localhost:5173")
-	netlink.StartPingLoop(relayURL, 5*time.Second)
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	packet := make([]byte, 1500)
-	for {
-		n, err := dev.Read(packet)
-		if err != nil {
-			log.Fatalf("Error reading from interface: %v", err)
+	go func() {
+		if err := srv.Start(4545); err != nil {
+			fmt.Printf("[NetConnect Daemon] Server error: %v\n", err)
 		}
+	}()
 
-		// Only parse IPv4 packets (version = 4)
-		if (packet[0] >> 4) == 4 {
-			srcIP := net.IP(packet[12:16])
-			dstIP := net.IP(packet[16:20])
-			protocol := packet[9]
-
-			protoName := fmt.Sprintf("Proto(%d)", protocol)
-			switch protocol {
-			case 1:
-				protoName = "ICMP (Ping)"
-			case 6:
-				protoName = "TCP"
-			case 17:
-				protoName = "UDP"
-			}
-
-			fmt.Printf("[IPv4] %s -> %s | %s | %d bytes\n", srcIP, dstIP, protoName, n)
-
-			// Reply to ICMP Echo Request
-			if protocol == 1 {
-				network.HandleICMPEcho(dev.Interface, packet, n)
-			}
-		}
-	}
+	fmt.Println("[NetConnect Daemon] Ready. Start GUI (`wails dev`) as normal user to connect.")
+	<-sigChan
+	fmt.Println("\n[NetConnect Daemon] Shutting down...")
+	srv.Stop()
 }

@@ -6,8 +6,16 @@ export function Connect() {
   return window['go']['main']['App']['Connect']();
 }
 
+export function Disconnect() {
+  return window['go']['main']['App']['Disconnect']();
+}
+
 export function GetSettings() {
   return window['go']['main']['App']['GetSettings']();
+}
+
+export function IsConnected() {
+  return window['go']['main']['App']['IsConnected']();
 }
 
 export function SaveSettings(arg1, arg2) {
