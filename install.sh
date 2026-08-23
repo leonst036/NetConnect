@@ -17,40 +17,39 @@ echo "========================================="
 echo " Installing NetConnect on System"
 echo "========================================="
 
-# 1. Ensure binary is built
-if [ ! -f "${BIN_SRC}" ]; then
-    echo "[1/5] Building NetConnect binary..."
-    if [ -n "${SUDO_USER}" ]; then
-        sudo -u "${SUDO_USER}" bash -c "cd '${SCRIPT_DIR}/gui' && wails build -tags webkit2_41 -o netconnect"
-    else
-        (cd "${SCRIPT_DIR}/gui" && wails build -tags webkit2_41 -o netconnect)
-    fi
+# 1. Stop existing service if running to prevent file locks
+if systemctl is-active --quiet netconnect.service 2>/dev/null; then
+    echo "[1/5] Stopping active netconnect service..."
+    systemctl stop netconnect.service || true
 fi
 
-# 2. Install Binary
-echo "[2/5] Installing binary to /usr/local/bin/netconnect..."
-cp "${BIN_SRC}" /usr/local/bin/netconnect
-chmod 755 /usr/local/bin/netconnect
+# 2. Build NetConnect binary if missing or if rebuild requested
+echo "[2/5] Building NetConnect application..."
+if [ -n "${SUDO_USER}" ]; then
+    sudo -u "${SUDO_USER}" bash -c "cd '${SCRIPT_DIR}/gui' && wails build -tags webkit2_41 -o netconnect"
+else
+    (cd "${SCRIPT_DIR}/gui" && wails build -tags webkit2_41 -o netconnect)
+fi
 
-# Optional capability for direct TUN access without daemon if supported
+# 3. Install Binary
+echo "[3/5] Installing binary to /usr/local/bin/netconnect..."
+install -m 755 "${BIN_SRC}" /usr/local/bin/netconnect
+
 if command -v setcap >/dev/null 2>&1; then
     setcap cap_net_admin=ep /usr/local/bin/netconnect 2>/dev/null || true
 fi
 
-# 3. Install Icons
-echo "[3/5] Installing application icons..."
+# 4. Install Desktop Entry
+echo "[4/5] Installing desktop launcher & application icons..."
 mkdir -p /usr/share/icons/hicolor/512x512/apps
 mkdir -p /usr/share/icons/hicolor/scalable/apps
 cp "${ICON_PNG}" /usr/share/icons/hicolor/512x512/apps/netconnect.png
 cp "${ICON_SVG}" /usr/share/icons/hicolor/scalable/apps/netconnect.svg
 
-# 4. Install Desktop Entry
-echo "[4/5] Installing desktop launcher..."
 mkdir -p /usr/share/applications
 cp "${SCRIPT_DIR}/scripts/netconnect.desktop" /usr/share/applications/netconnect.desktop
 chmod 644 /usr/share/applications/netconnect.desktop
 
-# Refresh desktop & icon databases
 if command -v update-desktop-database >/dev/null 2>&1; then
     update-desktop-database /usr/share/applications >/dev/null 2>&1 || true
 fi
@@ -64,6 +63,7 @@ cp "${SCRIPT_DIR}/scripts/netconnect.service" /etc/systemd/system/netconnect.ser
 systemctl daemon-reload
 systemctl enable netconnect.service
 systemctl restart netconnect.service
+
 
 echo ""
 echo "========================================="
