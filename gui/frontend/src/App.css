@@ -145,6 +145,39 @@
   box-shadow: 0 0 35px rgba(71, 85, 105, 0.5);
 }
 
+.power-button.error-pulse {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 45px rgba(239, 68, 68, 0.8), inset 0 0 20px rgba(239, 68, 68, 0.4) !important;
+  animation: errorShake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both, errorPulseGlow 1.5s ease-out;
+}
+
+@keyframes errorShake {
+  10%, 90% {
+    transform: translate3d(-3px, 0, 0);
+  }
+  20%, 80% {
+    transform: translate3d(4px, 0, 0);
+  }
+  30%, 50%, 70% {
+    transform: translate3d(-5px, 0, 0);
+  }
+  40%, 60% {
+    transform: translate3d(5px, 0, 0);
+  }
+}
+
+@keyframes errorPulseGlow {
+  0% {
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+  }
+  35% {
+    box-shadow: 0 0 55px rgba(239, 68, 68, 0.9), inset 0 0 25px rgba(239, 68, 68, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 25px rgba(51, 65, 85, 0.3);
+  }
+}
+
 .power-icon {
   font-size: 64px !important;
   color: #1e1b4b !important;

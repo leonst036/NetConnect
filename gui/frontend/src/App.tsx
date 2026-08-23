@@ -11,6 +11,7 @@ import { PlugAnimation, PlugAnimationMode } from './components/PlugAnimation'
 function App() {
   const [isConnected, setIsConnected] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isErrorAnimation, setIsErrorAnimation] = useState(false)
   const [plugAnimationMode, setPlugAnimationMode] = useState<PlugAnimationMode | null>(null)
   const [errorMessage, setErrorMessage] = useState<string>('')
   const [serverName, setServerName] = useState('http://localhost:4535')
@@ -49,6 +50,7 @@ function App() {
     if (isLoading) return
     setIsLoading(true)
     setErrorMessage('')
+    setIsErrorAnimation(false)
 
     if (!isConnected) {
       try {
@@ -59,6 +61,8 @@ function App() {
         const msg = err?.message || String(err)
         setErrorMessage(msg)
         setIsConnected(false)
+        setIsErrorAnimation(true)
+        setTimeout(() => setIsErrorAnimation(false), 1500)
       }
     } else {
       try {
@@ -127,7 +131,7 @@ function App() {
                 : isConnected
                 ? 'connected'
                 : 'disconnected'
-            } ${isLoading ? 'loading' : ''}`}
+            } ${isLoading ? 'loading' : ''} ${isErrorAnimation ? 'error-pulse' : ''}`}
             onClick={handlePowerClick}
             disabled={isLoading}
             aria-label={isConnected ? 'Disconnect' : 'Connect'}

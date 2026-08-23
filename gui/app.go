@@ -303,32 +303,32 @@ func (a *App) Connect() error {
 
 	// Try creating local TUN device
 	overlayCIDR, err := network.DetectCIDR()
-	if err == nil {
-		targetSubnets, errSubnets := network.DetectSubnets()
-		if errSubnets == nil {
-			dev, errDev := network.CreateVirtualDevice(overlayCIDR, targetSubnets)
-			if errDev == nil {
-				a.dev = dev
-				routeMgr := network.NewDeviceRouteManager(dev.Name(), dev.OverlayIP, relayURL)
-				routeMgr.StartSyncLoop(5 * time.Minute)
-				a.routeMgr = routeMgr
-
-				tunRouter := network.NewTUNRouter(dev.Interface, routeMgr, relayURL, a.client.TargetID())
-				go tunRouter.Start()
-				a.tunRouter = tunRouter
-
-				a.isConnected = true
-				fmt.Printf("[NetConnect GUI] Connected directly on %s\n", dev.Name())
-				return nil
-			} else {
-				fmt.Printf("[NetConnect GUI] Local TUN creation failed: %v\n", errDev)
-			}
-		}
+	if err != nil {
+		return fmt.Errorf("failed to detect CIDR: %w", err)
 	}
 
-	a.isDevMock = true
+	targetSubnets, errSubnets := network.DetectSubnets()
+	if errSubnets != nil {
+		return fmt.Errorf("failed to detect subnets: %w", errSubnets)
+	}
+
+	dev, errDev := network.CreateVirtualDevice(overlayCIDR, targetSubnets)
+	if errDev != nil {
+		fmt.Printf("[NetConnect GUI] Local TUN creation failed: %v\n", errDev)
+		return fmt.Errorf("daemon is not running and local TUN requires root privileges (please run `sudo go run main.go`): %w", errDev)
+	}
+
+	a.dev = dev
+	routeMgr := network.NewDeviceRouteManager(dev.Name(), dev.OverlayIP, relayURL)
+	routeMgr.StartSyncLoop(5 * time.Minute)
+	a.routeMgr = routeMgr
+
+	tunRouter := network.NewTUNRouter(dev.Interface, routeMgr, relayURL, a.client.TargetID())
+	go tunRouter.Start()
+	a.tunRouter = tunRouter
+
 	a.isConnected = true
-	fmt.Println("[NetConnect GUI] Notice: Running in Dev Mock Mode. Start `sudo go run main.go` for full TUN device & kernel routing.")
+	fmt.Printf("[NetConnect GUI] Connected directly on %s\n", dev.Name())
 	return nil
 }
 
