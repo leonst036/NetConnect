@@ -1,5 +1,3 @@
-/* Material 3 Plug Connection & Disconnection Animations */
-
 .plug-animation-overlay {
   position: absolute;
   top: 0;
@@ -7,9 +5,10 @@
   width: 480px;
   height: 600px;
   pointer-events: none;
-  z-index: 1; /* Lowest layer under all UI */
+  z-index: 10;
   overflow: hidden;
 }
+
 
 .plug-animation-overlay svg path {
   fill: none !important;
@@ -254,3 +253,105 @@
     transform: scale(2.4);
   }
 }
+
+.m3-branch-left-error {
+  animation: m3BranchErrorLeft 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes m3BranchErrorLeft {
+  0% {
+    transform: translate(-180px, -180px);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  38% {
+    transform: translate(-15px, -15px);
+  }
+  42% {
+    transform: translate(-10px, -10px);
+  }
+  45% {
+    transform: translate(-28px, -28px);
+  }
+  50% {
+    transform: translate(-22px, -22px);
+  }
+  55% {
+    transform: translate(-35px, -35px);
+  }
+  75% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(-180px, -180px);
+    opacity: 0;
+  }
+}
+
+.m3-branch-right-error {
+  animation: m3BranchErrorRight 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes m3BranchErrorRight {
+  0% {
+    transform: translate(180px, 180px);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  38% {
+    transform: translate(15px, 15px);
+  }
+  42% {
+    transform: translate(10px, 10px);
+  }
+  45% {
+    transform: translate(28px, 28px);
+  }
+  50% {
+    transform: translate(22px, 22px);
+  }
+  55% {
+    transform: translate(35px, 35px);
+  }
+  75% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(180px, 180px);
+    opacity: 0;
+  }
+}
+
+.m3-cable-pulse-error {
+  stroke: #ef4444 !important;
+  animation: m3PulseFlow 0.3s linear infinite !important;
+}
+
+.m3-error-spark {
+  animation: m3ErrorSparkAnim 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: 240px 288px;
+}
+
+@keyframes m3ErrorSparkAnim {
+  0%, 36% {
+    opacity: 0;
+    transform: scale(0.1);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  60% {
+    opacity: 0.8;
+    transform: scale(1.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.4);
+  }
+}
+

@@ -1,10 +1,11 @@
-//go:build linux
-
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"image/color"
+	"image/png"
 	"os"
 
 	"github.com/godbus/dbus/v5"
@@ -45,6 +46,34 @@ func (t *TrayNotifier) Scroll(delta int32, orientation string) *dbus.Error {
 	return nil
 }
 
+type Pixmap struct {
+	Width  int32
+	Height int32
+	Data   []byte
+}
+
+func getIconPixmaps() []Pixmap {
+	img, err := png.Decode(bytes.NewReader(appIcon))
+	if err != nil {
+		return nil
+	}
+	bounds := img.Bounds()
+	w, h := bounds.Dx(), bounds.Dy()
+	data := make([]byte, w*h*4)
+	idx := 0
+	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+		for x := bounds.Min.X; x < bounds.Max.X; x++ {
+			c := color.NRGBAModel.Convert(img.At(x, y)).(color.NRGBA)
+			data[idx] = c.A
+			data[idx+1] = c.R
+			data[idx+2] = c.G
+			data[idx+3] = c.B
+			idx += 4
+		}
+	}
+	return []Pixmap{{Width: int32(w), Height: int32(h), Data: data}}
+}
+
 func setupTray(app *App, ctx context.Context) {
 	conn, err := dbus.ConnectSessionBus()
 	if err != nil {
@@ -81,7 +110,10 @@ func setupTray(app *App, ctx context.Context) {
 				Value: "Active",
 			},
 			"IconName": {
-				Value: "network-vpn",
+				Value: "netconnect",
+			},
+			"IconPixmap": {
+				Value: getIconPixmaps(),
 			},
 			"IconThemePath": {
 				Value: "",
@@ -97,6 +129,7 @@ func setupTray(app *App, ctx context.Context) {
 		fmt.Printf("[NetConnect Tray] Failed to export props: %v\n", err)
 		return
 	}
+
 
 	watcherObj := conn.Object("org.kde.StatusNotifierWatcher", "/StatusNotifierWatcher")
 	call := watcherObj.Call("org.kde.StatusNotifierWatcher.RegisterStatusNotifierItem", 0, serviceName)

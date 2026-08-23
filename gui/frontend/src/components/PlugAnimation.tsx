@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react'
 import './PlugAnimation.css'
 
-export type PlugAnimationMode = 'connect' | 'connected' | 'disconnect'
+export type PlugAnimationMode = 'connect' | 'connected' | 'disconnect' | 'error'
 
 interface PlugAnimationProps {
   mode?: PlugAnimationMode
@@ -15,7 +15,7 @@ export const PlugAnimation: React.FC<PlugAnimationProps> = ({
   useEffect(() => {
     if (mode === 'connected') return
 
-    const duration = mode === 'connect' ? 1700 : 1400
+    const duration = mode === 'connect' ? 1700 : mode === 'error' ? 1600 : 1400
     const timer = setTimeout(() => {
       if (onComplete) {
         onComplete()
@@ -30,6 +30,8 @@ export const PlugAnimation: React.FC<PlugAnimationProps> = ({
       ? 'm3-branch-left-connect'
       : mode === 'disconnect'
       ? 'm3-branch-left-disconnect'
+      : mode === 'error'
+      ? 'm3-branch-left-error'
       : 'm3-branch-left-connected'
 
   const branchRightClass =
@@ -37,7 +39,10 @@ export const PlugAnimation: React.FC<PlugAnimationProps> = ({
       ? 'm3-branch-right-connect'
       : mode === 'disconnect'
       ? 'm3-branch-right-disconnect'
+      : mode === 'error'
+      ? 'm3-branch-right-error'
       : 'm3-branch-right-connected'
+
 
   // Top-left cable curves with wide clearance around settings icon and enters directly into strain relief at (199, 247)
   const topLeftPath =
@@ -75,6 +80,13 @@ export const PlugAnimation: React.FC<PlugAnimationProps> = ({
             <stop offset="100%" stopColor="#334155" stopOpacity="0" />
           </radialGradient>
 
+          <radialGradient id="m3ErrorGlow" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="1" />
+            <stop offset="30%" stopColor="#f87171" stopOpacity="0.9" />
+            <stop offset="60%" stopColor="#ef4444" stopOpacity="0.6" />
+            <stop offset="100%" stopColor="#7f1d1d" stopOpacity="0" />
+          </radialGradient>
+
           <linearGradient id="m3PlugSurface" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="#2e273d" />
             <stop offset="100%" stopColor="#1a1526" />
@@ -92,7 +104,11 @@ export const PlugAnimation: React.FC<PlugAnimationProps> = ({
           <path d={topLeftPath} fill="none" className="m3-cable-track" />
           {/* Energy Pulse Flow */}
           {mode !== 'disconnect' && (
-            <path d={topLeftPath} fill="none" className="m3-cable-pulse" />
+            <path
+              d={topLeftPath}
+              fill="none"
+              className={`m3-cable-pulse ${mode === 'error' ? 'm3-cable-pulse-error' : ''}`}
+            />
           )}
 
           {/* Male Connector Head (docked at 240, 288 at 45 deg) */}
@@ -117,14 +133,14 @@ export const PlugAnimation: React.FC<PlugAnimationProps> = ({
               height="32"
               rx="10"
               fill="url(#m3PlugSurface)"
-              stroke="#d8b4fe"
+              stroke={mode === 'error' ? '#ef4444' : '#d8b4fe'}
               strokeWidth="1.5"
               filter="url(#m3Elevation)"
             />
 
             {/* M3 Tonal Surface Pill */}
-            <rect x="-35" y="-7" width="14" height="14" rx="7" fill="#4f378b" />
-            <circle cx="-28" cy="0" r="3" fill="#d8b4fe" />
+            <rect x="-35" y="-7" width="14" height="14" rx="7" fill={mode === 'error' ? '#7f1d1d' : '#4f378b'} />
+            <circle cx="-28" cy="0" r="3" fill={mode === 'error' ? '#f87171' : '#d8b4fe'} />
 
             {/* Front Collar */}
             <rect x="-8" y="-12" width="6" height="24" rx="2" fill="#475569" stroke="#94a3b8" strokeWidth="1" />
@@ -137,7 +153,7 @@ export const PlugAnimation: React.FC<PlugAnimationProps> = ({
               height="16"
               rx="3"
               fill="#382e4d"
-              stroke="#d8b4fe"
+              stroke={mode === 'error' ? '#ef4444' : '#d8b4fe'}
               strokeWidth="1.2"
             />
             {/* Gold Contact Pins */}
@@ -152,7 +168,11 @@ export const PlugAnimation: React.FC<PlugAnimationProps> = ({
           <path d={bottomRightPath} fill="none" className="m3-cable-track" />
           {/* Energy Pulse Flow */}
           {mode !== 'disconnect' && (
-            <path d={bottomRightPath} fill="none" className="m3-cable-pulse" />
+            <path
+              d={bottomRightPath}
+              fill="none"
+              className={`m3-cable-pulse ${mode === 'error' ? 'm3-cable-pulse-error' : ''}`}
+            />
           )}
 
           {/* Female Socket Head (docked at 240, 288 at 225 deg) */}
@@ -177,14 +197,14 @@ export const PlugAnimation: React.FC<PlugAnimationProps> = ({
               height="32"
               rx="10"
               fill="url(#m3PlugSurface)"
-              stroke="#d8b4fe"
+              stroke={mode === 'error' ? '#ef4444' : '#d8b4fe'}
               strokeWidth="1.5"
               filter="url(#m3Elevation)"
             />
 
             {/* M3 Tonal Surface Pill */}
-            <rect x="-35" y="-7" width="14" height="14" rx="7" fill="#4f378b" />
-            <circle cx="-28" cy="0" r="3" fill="#d8b4fe" />
+            <rect x="-35" y="-7" width="14" height="14" rx="7" fill={mode === 'error' ? '#7f1d1d' : '#4f378b'} />
+            <circle cx="-28" cy="0" r="3" fill={mode === 'error' ? '#f87171' : '#d8b4fe'} />
 
             {/* Socket Mouth */}
             <rect
@@ -194,7 +214,7 @@ export const PlugAnimation: React.FC<PlugAnimationProps> = ({
               height="26"
               rx="3"
               fill="#334155"
-              stroke="#d8b4fe"
+              stroke={mode === 'error' ? '#ef4444' : '#d8b4fe'}
               strokeWidth="1.2"
             />
             {/* Receptacle Slot */}
@@ -205,11 +225,8 @@ export const PlugAnimation: React.FC<PlugAnimationProps> = ({
         {/* Dynamic Contact / Break Effects */}
         {mode === 'connect' && (
           <g>
-            {/* M3 Ripples */}
             <circle cx="240" cy="288" r="40" fill="none" stroke="#d8b4fe" strokeWidth="2.5" className="m3-ripple-1" />
             <circle cx="240" cy="288" r="40" fill="none" stroke="#c084fc" strokeWidth="1.5" className="m3-ripple-2" />
-
-            {/* Contact Glow */}
             <circle cx="240" cy="288" r="30" fill="url(#m3ContactGlow)" className="m3-contact-glow" />
             <circle cx="240" cy="288" r="7" fill="#ffffff" className="m3-contact-glow" />
           </g>
@@ -217,9 +234,23 @@ export const PlugAnimation: React.FC<PlugAnimationProps> = ({
 
         {mode === 'disconnect' && (
           <g>
-            {/* Disconnect Break Flash */}
             <circle cx="240" cy="288" r="28" fill="url(#m3BreakGlow)" className="m3-disconnect-break" />
             <circle cx="240" cy="288" r="36" fill="none" stroke="#c084fc" strokeWidth="1.5" className="m3-disconnect-break" />
+          </g>
+        )}
+
+        {mode === 'error' && (
+          <g className="m3-error-spark">
+            <circle cx="240" cy="288" r="32" fill="url(#m3ErrorGlow)" />
+            <circle cx="240" cy="288" r="46" fill="none" stroke="#ef4444" strokeWidth="2" />
+            <path
+              d="M 236 274 L 244 286 L 237 289 L 245 302"
+              fill="none"
+              stroke="#ffffff"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </g>
         )}
       </svg>

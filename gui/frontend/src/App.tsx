@@ -69,6 +69,16 @@ function App() {
     setIsErrorAnimation(false)
 
     if (!isConnected) {
+      if (!isAuthenticated) {
+        setErrorMessage('Device is not authorized with NetLink. Please log in first.')
+        setIsConnected(false)
+        setIsErrorAnimation(true)
+        setPlugAnimationMode('error')
+        setTimeout(() => setIsErrorAnimation(false), 1600)
+        setIsLoading(false)
+        return
+      }
+
       try {
         await Connect()
         setIsConnected(true)
@@ -78,7 +88,8 @@ function App() {
         setErrorMessage(msg)
         setIsConnected(false)
         setIsErrorAnimation(true)
-        setTimeout(() => setIsErrorAnimation(false), 1500)
+        setPlugAnimationMode('error')
+        setTimeout(() => setIsErrorAnimation(false), 1600)
       }
     } else {
       try {
@@ -107,18 +118,19 @@ function App() {
         <div className="bg-glow" />
         <div className="bg-glow-2" />
 
-        {(isConnected || plugAnimationMode === 'disconnect') && (
+        {(isConnected || plugAnimationMode !== null) && (
           <PlugAnimation
             mode={plugAnimationMode || 'connected'}
             onComplete={() => {
               if (plugAnimationMode === 'connect') {
                 setPlugAnimationMode('connected')
-              } else if (plugAnimationMode === 'disconnect') {
+              } else if (plugAnimationMode === 'disconnect' || plugAnimationMode === 'error') {
                 setPlugAnimationMode(null)
               }
             }}
           />
         )}
+
 
         <Box className="netconnect-header">
           <IconButton

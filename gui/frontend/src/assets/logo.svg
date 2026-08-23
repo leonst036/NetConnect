@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Cable Gradients -->
+    <linearGradient id="cableGradLeft" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#6366f1" />
+      <stop offset="60%" stopColor="#818cf8" />
+      <stop offset="100%" stopColor="#d8b4fe" />
+    </linearGradient>
+
+    <linearGradient id="cableGradRight" x1="100%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stopColor="#6366f1" />
+      <stop offset="60%" stopColor="#818cf8" />
+      <stop offset="100%" stopColor="#d8b4fe" />
+    </linearGradient>
+
+    <!-- Connector Shell Gradient -->
+    <linearGradient id="plugShell" x1="0%" y1="0%" x2="1" y2="1">
+      <stop offset="0%" stopColor="#2e273d" />
+      <stop offset="100%" stopColor="#1a1526" />
+    </linearGradient>
+
+    <!-- Drop Shadow Filter -->
+    <filter id="plugShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" floodColor="#000000" floodOpacity="0.45" />
+      <feDropShadow dx="0" dy="2" stdDeviation="4" floodColor="#000000" floodOpacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- Cables (Extending from edges to center connectors) -->
+  <!-- Top-Left Cable -->
+  <path
+    d="M -10 -10 C 60 60, 110 140, 185 185"
+    fill="none"
+    stroke="#1e1b4b"
+    stroke-width="20"
+    stroke-linecap="round"
+  />
+  <path
+    d="M -10 -10 C 60 60, 110 140, 185 185"
+    fill="none"
+    stroke="url(#cableGradLeft)"
+    stroke-width="12"
+    stroke-linecap="round"
+  />
+
+  <!-- Bottom-Right Cable -->
+  <path
+    d="M 522 522 C 452 452, 402 372, 327 327"
+    fill="none"
+    stroke="#1e1b4b"
+    stroke-width="20"
+    stroke-linecap="round"
+  />
+  <path
+    d="M 522 522 C 452 452, 402 372, 327 327"
+    fill="none"
+    stroke="url(#cableGradRight)"
+    stroke-width="12"
+    stroke-linecap="round"
+  />
+
+  <!-- Connectors Group with shadow -->
+  <g filter="url(#plugShadow)">
+    <!-- Top-Left Male Connector Head (docking at center at 45deg) -->
+    <g transform="translate(256, 256) rotate(45)">
+      <!-- Strain Relief Boot -->
+      <rect x="-105" y="-12" width="26" height="24" rx="6" fill="#363045" stroke="#49454f" stroke-width="2" />
+      <rect x="-117" y="-9" width="16" height="18" rx="5" fill="#241f30" />
+
+      <!-- Connector Body (Capsule) -->
+      <rect
+        x="-82"
+        y="-28"
+        width="66"
+        height="56"
+        rx="18"
+        fill="url(#plugShell)"
+        stroke="#d8b4fe"
+        stroke-width="2.5"
+      />
+
+      <!-- Tonal Surface Pill Accent -->
+      <rect x="-65" y="-12" width="24" height="24" rx="12" fill="#4f378b" />
+      <circle cx="-53" cy="0" r="5" fill="#d8b4fe" />
+
+      <!-- Front Collar -->
+      <rect x="-16" y="-21" width="10" height="42" rx="3.5" fill="#475569" stroke="#94a3b8" stroke-width="2" />
+
+      <!-- Male Tip (Inserting into female socket) -->
+      <rect
+        x="-6"
+        y="-14"
+        width="18"
+        height="28"
+        rx="5"
+        fill="#382e4d"
+        stroke="#d8b4fe"
+        stroke-width="2"
+      />
+
+      <!-- Gold Contact Pins -->
+      <line x1="2" y1="-6.5" x2="10" y2="-6.5" stroke="#fde047" stroke-width="3" stroke-linecap="round" />
+      <line x1="2" y1="6.5" x2="10" y2="6.5" stroke="#fde047" stroke-width="3" stroke-linecap="round" />
+    </g>
+
+    <!-- Bottom-Right Female Socket Head (docking at center at 225deg) -->
+    <g transform="translate(256, 256) rotate(225)">
+      <!-- Strain Relief Boot -->
+      <rect x="-105" y="-12" width="26" height="24" rx="6" fill="#363045" stroke="#49454f" stroke-width="2" />
+      <rect x="-117" y="-9" width="16" height="18" rx="5" fill="#241f30" />
+
+      <!-- Socket Body (Capsule) -->
+      <rect
+        x="-82"
+        y="-28"
+        width="66"
+        height="56"
+        rx="18"
+        fill="url(#plugShell)"
+        stroke="#d8b4fe"
+        stroke-width="2.5"
+      />
+
+      <!-- Tonal Surface Pill Accent -->
+      <rect x="-65" y="-12" width="24" height="24" rx="12" fill="#4f378b" />
+      <circle cx="-53" cy="0" r="5" fill="#d8b4fe" />
+
+      <!-- Socket Mouth Collar -->
+      <rect
+        x="-16"
+        y="-23"
+        width="14"
+        height="46"
+        rx="5"
+        fill="#334155"
+        stroke="#d8b4fe"
+        stroke-width="2"
+      />
+      <!-- Receptacle Slot -->
+      <rect x="-9" y="-16" width="16" height="32" rx="4" fill="#0f0b18" stroke="#49454f" stroke-width="1.5" />
+    </g>
+  </g>
+</svg>
