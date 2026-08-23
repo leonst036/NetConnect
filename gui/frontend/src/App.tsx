@@ -34,16 +34,32 @@ function App() {
         console.error('[NetConnect] Failed to load settings:', err)
       })
 
-    IsConnected()
-      .then((status) => {
-        setIsConnected(status)
-        if (status) {
-          setPlugAnimationMode('connected')
-        }
-      })
-      .catch(() => {
-        setIsConnected(false)
-      })
+    const checkConnection = () => {
+      IsConnected()
+        .then((status) => {
+          setIsConnected((prev) => {
+            if (prev && !status) {
+              setPlugAnimationMode('disconnect')
+            } else if (!prev && status) {
+              setPlugAnimationMode('connected')
+            }
+            return status
+          })
+        })
+        .catch(() => {
+          setIsConnected((prev) => {
+            if (prev) {
+              setPlugAnimationMode('disconnect')
+            }
+            return false
+          })
+        })
+    }
+
+    checkConnection()
+    const heartbeatInterval = setInterval(checkConnection, 1500)
+
+    return () => clearInterval(heartbeatInterval)
   }, [])
 
   const handlePowerClick = async () => {

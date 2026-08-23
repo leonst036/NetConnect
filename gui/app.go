@@ -250,11 +250,15 @@ func (a *App) IsConnected() bool {
 				return data.IsConnected
 			}
 		}
+		return false
 	}
 
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	return a.isConnected
+	if a.dev != nil {
+		return a.isConnected
+	}
+	return false
 }
 
 // Connect delegates to the root Daemon if active, or creates the local TUN device.
