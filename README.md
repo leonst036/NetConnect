@@ -39,8 +39,8 @@ NetConnect requires network administration privileges to create TUN interfaces a
 
 ## Configuration
 
-NetConnect can be configured via environment variables or a local `.env` file:
+NetConnect can be configured via environment variables or directly inside the desktop GUI settings:
 
 | Variable | Default | Description |
 |---|---|---|
-| `NETLINK_RELAY_URL` | `localhost:5173` | The URL of the NetLink relay server |
+| `NETLINK_RELAY_URL` | `http://localhost:4535` | The URL of the NetLink relay server |
