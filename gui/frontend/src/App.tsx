@@ -19,7 +19,6 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
-  // Fetch initial settings and connection status from Go backend on startup
   useEffect(() => {
     GetSettings()
       .then((settings) => {
@@ -31,7 +30,7 @@ function App() {
         }
       })
       .catch((err) => {
-        console.error('[NetConnect] Failed to load initial settings:', err)
+        console.error('[NetConnect] Failed to load settings:', err)
       })
 
     IsConnected()
@@ -46,7 +45,6 @@ function App() {
       })
   }, [])
 
-  // Power button click handler: manages full Connect / Disconnect lifecycle
   const handlePowerClick = async () => {
     if (isLoading) return
     setIsLoading(true)
@@ -54,36 +52,29 @@ function App() {
 
     if (!isConnected) {
       try {
-        console.log('[NetConnect Frontend] Initiating Connect...')
         await Connect()
         setIsConnected(true)
         setPlugAnimationMode('connect')
-        console.log(`[NetConnect Frontend] Connected successfully to: ${serverName}`)
       } catch (err: any) {
         const msg = err?.message || String(err)
-        console.error('[NetConnect Frontend] Connection failed:', msg)
         setErrorMessage(msg)
         setIsConnected(false)
       }
     } else {
       try {
-        console.log('[NetConnect Frontend] Initiating Disconnect...')
         await Disconnect()
         setIsConnected(false)
         setPlugAnimationMode('disconnect')
-        console.log(`[NetConnect Frontend] Disconnected from: ${serverName}`)
       } catch (err: any) {
-        console.error('[NetConnect Frontend] Disconnect failed:', err)
+        console.error('[NetConnect] Disconnect failed:', err)
       }
     }
 
     setIsLoading(false)
   }
 
-  // Settings button click handler
   const handleSettingsClick = () => {
     setIsSettingsOpen(true)
-    console.log('[NetConnect] Settings popup opened!')
   }
 
   const handleCloseSettings = () => {
