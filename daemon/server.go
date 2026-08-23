@@ -15,11 +15,13 @@ import (
 )
 
 type DaemonState struct {
-	IsConnected   bool   `json:"isConnected"`
-	ServerAddress string `json:"serverAddress"`
-	DeviceName    string `json:"deviceName"`
-	OverlayIP     string `json:"overlayIP"`
-	Error         string `json:"error,omitempty"`
+	IsConnected     bool   `json:"isConnected"`
+	ServerAddress   string `json:"serverAddress"`
+	DeviceName      string `json:"deviceName"`
+	OverlayIP       string `json:"overlayIP"`
+	Username        string `json:"username,omitempty"`
+	IsAuthenticated bool   `json:"isAuthenticated"`
+	Error           string `json:"error,omitempty"`
 }
 
 type DaemonServer struct {
@@ -53,6 +55,9 @@ func (ds *DaemonServer) Start(port int) error {
 	mux.HandleFunc("/api/connect", ds.handleConnect)
 	mux.HandleFunc("/api/disconnect", ds.handleDisconnect)
 	mux.HandleFunc("/api/settings", ds.handleSettings)
+	mux.HandleFunc("/api/auth/device-flow/start", ds.handleDeviceFlowStart)
+	mux.HandleFunc("/api/auth/device-flow/poll", ds.handleDeviceFlowPoll)
+	mux.HandleFunc("/api/auth/logout", ds.handleLogout)
 
 	ds.server = &http.Server{
 		Addr:    fmt.Sprintf("127.0.0.1:%d", port),
@@ -81,15 +86,127 @@ func (ds *DaemonServer) handleStatus(w http.ResponseWriter, r *http.Request) {
 		overlayIP = ds.dev.OverlayIP.String()
 	}
 
+	username := ""
+	isAuthenticated := false
+	if ds.client != nil {
+		username = ds.client.Username()
+		isAuthenticated = ds.client.Token() != ""
+	}
+
 	state := DaemonState{
-		IsConnected:   ds.isConnected,
-		ServerAddress: ds.relayURL,
-		DeviceName:    ds.targetID,
-		OverlayIP:     overlayIP,
+		IsConnected:     ds.isConnected,
+		ServerAddress:   ds.relayURL,
+		DeviceName:      ds.targetID,
+		OverlayIP:       overlayIP,
+		Username:        username,
+		IsAuthenticated: isAuthenticated,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(state)
+}
+
+func (ds *DaemonServer) handleDeviceFlowStart(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var payload struct {
+		ServerAddress string `json:"serverAddress"`
+		DeviceName    string `json:"deviceName"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&payload)
+
+	ds.mu.Lock()
+	if payload.ServerAddress != "" {
+		ds.relayURL = payload.ServerAddress
+	}
+	if payload.DeviceName != "" {
+		ds.targetID = payload.DeviceName
+	}
+	if ds.client == nil || ds.client.RelayURL() != ds.relayURL {
+		ds.client = auth.GetOrCreateClient(ds.relayURL)
+	}
+	client := ds.client
+	deviceName := ds.targetID
+	ds.mu.Unlock()
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	res, err := client.StartDeviceAuth(ctx, deviceName)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(res)
+}
+
+func (ds *DaemonServer) handleDeviceFlowPoll(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var payload struct {
+		DeviceCode string `json:"device_code"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil || payload.DeviceCode == "" {
+		http.Error(w, "Invalid device code", http.StatusBadRequest)
+		return
+	}
+
+	ds.mu.Lock()
+	client := ds.client
+	ds.mu.Unlock()
+
+	if client == nil {
+		http.Error(w, "Auth client not initialized", http.StatusInternalServerError)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
+	defer cancel()
+
+	res, err := client.PollDeviceAuth(ctx, payload.DeviceCode)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+
+	if res.Status == "approved" || (res.Token != "" && res.Error == "") {
+		ds.mu.Lock()
+		if res.TargetID != "" {
+			ds.targetID = res.TargetID
+		}
+		ds.mu.Unlock()
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(res)
+}
+
+func (ds *DaemonServer) handleLogout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	ds.mu.Lock()
+	if ds.client != nil {
+		ds.client.Logout()
+	}
+	ds.mu.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]bool{"success": true})
 }
 
 func (ds *DaemonServer) handleConnect(w http.ResponseWriter, r *http.Request) {
