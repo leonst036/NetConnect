@@ -83,8 +83,8 @@ function App() {
         await Connect()
         setIsConnected(true)
         setPlugAnimationMode('connect')
-      } catch (err: any) {
-        const msg = err?.message || String(err)
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
         setErrorMessage(msg)
         setIsConnected(false)
         setIsErrorAnimation(true)
@@ -96,10 +96,11 @@ function App() {
         await Disconnect()
         setIsConnected(false)
         setPlugAnimationMode('disconnect')
-      } catch (err: any) {
-        console.error('[NetConnect] Disconnect failed:', err)
+      } catch {
+        // Ignored
       }
     }
+
 
     setIsLoading(false)
   }

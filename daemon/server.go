@@ -291,15 +291,10 @@ func (ds *DaemonServer) connectLocked() error {
 		return nil
 	}
 
-	fmt.Printf("[NetConnect Daemon] Pinging relay at %s...\n", ds.relayURL)
-	// 1. Ping Relay
-	_, err := netlink.Ping(ds.relayURL, 5*time.Second)
-	if err != nil {
+	if _, err := netlink.Ping(ds.relayURL, 5*time.Second); err != nil {
 		return fmt.Errorf("relay ping failed: %w", err)
 	}
-	fmt.Println("[NetConnect Daemon] Ping relay successful.")
 
-	// 2. Detect CIDR
 	overlayCIDR, err := network.DetectCIDR()
 	if err != nil {
 		return fmt.Errorf("detect CIDR failed: %w", err)
@@ -309,19 +304,16 @@ func (ds *DaemonServer) connectLocked() error {
 		return fmt.Errorf("detect subnets failed: %w", err)
 	}
 
-	// 3. Create TUN Device
 	dev, err := network.CreateVirtualDevice(overlayCIDR, targetSubnets)
 	if err != nil {
 		return fmt.Errorf("TUN device creation failed (%w). If kernel was updated, please reboot to load the 'tun' module.", err)
 	}
 	ds.dev = dev
 
-	// 4. Start route manager
 	routeMgr := network.NewDeviceRouteManager(dev.Name(), dev.OverlayIP, ds.relayURL)
 	routeMgr.StartSyncLoop(5 * time.Minute)
 	ds.routeMgr = routeMgr
 
-	// 5. Start TUN router
 	tunRouter := network.NewTUNRouter(dev.Interface, routeMgr, ds.relayURL, ds.targetID)
 	go tunRouter.Start()
 	ds.tunRouter = tunRouter
@@ -330,6 +322,7 @@ func (ds *DaemonServer) connectLocked() error {
 	fmt.Printf("[NetConnect Daemon] Connected on %s (Overlay IP: %s)\n", dev.Name(), dev.OverlayIP.String())
 	return nil
 }
+
 
 func (ds *DaemonServer) disconnectLocked() error {
 	if !ds.isConnected {

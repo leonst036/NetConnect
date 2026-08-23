@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-
 	"github.com/leonst036/NetConnect/network"
 	netlink "github.com/leonst036/NetConnect/network/NetLink"
 	"github.com/leonst036/NetConnect/network/NetLink/auth"
@@ -22,7 +21,6 @@ import (
 
 const daemonBaseURL = "http://127.0.0.1:4545"
 
-// SettingsData represents the settings state exchanged with the frontend.
 type SettingsData struct {
 	ServerAddress   string `json:"serverAddress"`
 	DeviceName      string `json:"deviceName"`
@@ -31,8 +29,6 @@ type SettingsData struct {
 	AutoStart       bool   `json:"autoStart"`
 }
 
-
-// App struct
 type App struct {
 	ctx         context.Context
 	client      *auth.Client
@@ -41,7 +37,6 @@ type App struct {
 	routeMgr    *network.DeviceRouteManager
 	tunRouter   *network.TUNRouter
 	isConnected bool
-	isDevMock   bool
 	httpClient  *http.Client
 }
 
@@ -58,7 +53,6 @@ func NewApp() *App {
 
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
-	fmt.Println("[NetConnect GUI] Startup completed.")
 }
 
 func (a *App) shutdown(ctx context.Context) {
@@ -74,7 +68,6 @@ func (a *App) isDaemonAvailable() bool {
 	return resp.StatusCode == http.StatusOK
 }
 
-// GetSettings returns current server address, device name, and auth state.
 func (a *App) GetSettings() SettingsData {
 	if a.isDaemonAvailable() {
 		resp, err := a.httpClient.Get(daemonBaseURL + "/api/status")
@@ -111,8 +104,6 @@ func (a *App) GetSettings() SettingsData {
 	}
 }
 
-
-// SaveSettings validates and applies settings.
 func (a *App) SaveSettings(serverAddress string, deviceName string) error {
 	if a.isDaemonAvailable() {
 		body, _ := json.Marshal(map[string]string{
@@ -143,15 +134,9 @@ func (a *App) SaveSettings(serverAddress string, deviceName string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := a.client.UpdateConfig(ctx, serverAddress, deviceName); err != nil {
-		return err
-	}
-
-	fmt.Printf("[NetConnect GUI] Settings updated: server=%s, device=%s\n", a.client.RelayURL(), a.client.TargetID())
-	return nil
+	return a.client.UpdateConfig(ctx, serverAddress, deviceName)
 }
 
-// StartDeviceLogin starts the web-based device authorization flow.
 func (a *App) StartDeviceLogin(serverAddress string, deviceName string) (*auth.DeviceCodeResponse, error) {
 	if a.isDaemonAvailable() {
 		body, _ := json.Marshal(map[string]string{
@@ -192,7 +177,6 @@ func (a *App) StartDeviceLogin(serverAddress string, deviceName string) (*auth.D
 	return a.client.StartDeviceAuth(ctx, deviceName)
 }
 
-// PollDeviceLogin checks if the user completed authentication and authorization in the web browser.
 func (a *App) PollDeviceLogin(deviceCode string) (*auth.DeviceTokenResponse, error) {
 	if a.isDaemonAvailable() {
 		body, _ := json.Marshal(map[string]string{
@@ -222,7 +206,6 @@ func (a *App) PollDeviceLogin(deviceCode string) (*auth.DeviceTokenResponse, err
 	return a.client.PollDeviceAuth(ctx, deviceCode)
 }
 
-// Logout clears the user token and session.
 func (a *App) Logout() error {
 	if a.isDaemonAvailable() {
 		resp, err := a.httpClient.Post(daemonBaseURL+"/api/auth/logout", "application/json", nil)
@@ -239,35 +222,30 @@ func (a *App) Logout() error {
 	return nil
 }
 
-// OpenVerificationURL opens the NetLink web approval page in the default web browser.
 func (a *App) OpenVerificationURL(url string) {
 	if a.ctx != nil {
 		runtime.BrowserOpenURL(a.ctx, url)
 	}
 }
 
-// HideWindow minimizes/hides the main application window to the tray.
 func (a *App) HideWindow() {
 	if a.ctx != nil {
 		runtime.WindowHide(a.ctx)
 	}
 }
 
-// ShowWindow restores and focuses the main application window.
 func (a *App) ShowWindow() {
 	if a.ctx != nil {
 		runtime.WindowShow(a.ctx)
 	}
 }
 
-// QuitApp terminates the application completely.
 func (a *App) QuitApp() {
 	if a.ctx != nil {
 		runtime.Quit(a.ctx)
 	}
 }
 
-// IsConnected returns whether the connection is active.
 func (a *App) IsConnected() bool {
 	if a.isDaemonAvailable() {
 		resp, err := a.httpClient.Get(daemonBaseURL + "/api/status")
@@ -291,14 +269,10 @@ func (a *App) IsConnected() bool {
 	return false
 }
 
-// Connect delegates to the root Daemon if active, or creates the local TUN device.
 func (a *App) Connect() error {
-	fmt.Println("[NetConnect GUI] Connect button clicked!")
 	if a.isDaemonAvailable() {
-		fmt.Println("[NetConnect GUI] Forwarding Connect request to background Daemon (127.0.0.1:4545)...")
 		resp, err := a.httpClient.Post(daemonBaseURL+"/api/connect", "application/json", nil)
 		if err != nil {
-			fmt.Printf("[NetConnect GUI] Daemon connection error: %v\n", err)
 			return fmt.Errorf("failed to contact NetConnect daemon: %w", err)
 		}
 		defer resp.Body.Close()
@@ -307,10 +281,8 @@ func (a *App) Connect() error {
 				Error string `json:"error"`
 			}
 			_ = json.NewDecoder(resp.Body).Decode(&errData)
-			fmt.Printf("[NetConnect GUI] Daemon returned error: %s\n", errData.Error)
 			return fmt.Errorf("daemon error: %s", errData.Error)
 		}
-		fmt.Println("[NetConnect GUI] Successfully connected via background root daemon.")
 		return nil
 	}
 
@@ -328,14 +300,10 @@ func (a *App) Connect() error {
 
 	relayURL := a.client.RelayURL()
 
-	// Verify connection to relay
-	_, err := netlink.Ping(relayURL, 5*time.Second)
-	if err != nil {
-		fmt.Printf("[NetConnect GUI] Relay ping failed: %v\n", err)
+	if _, err := netlink.Ping(relayURL, 5*time.Second); err != nil {
 		return fmt.Errorf("relay ping failed: %w", err)
 	}
 
-	// Try creating local TUN device
 	overlayCIDR, err := network.DetectCIDR()
 	if err != nil {
 		return fmt.Errorf("failed to detect CIDR: %w", err)
@@ -348,8 +316,7 @@ func (a *App) Connect() error {
 
 	dev, errDev := network.CreateVirtualDevice(overlayCIDR, targetSubnets)
 	if errDev != nil {
-		fmt.Printf("[NetConnect GUI] Local TUN creation failed: %v\n", errDev)
-		return fmt.Errorf("daemon is not running and local TUN requires root privileges (please run `sudo go run main.go`): %w", errDev)
+		return fmt.Errorf("local TUN creation failed: %w", errDev)
 	}
 
 	a.dev = dev
@@ -362,21 +329,16 @@ func (a *App) Connect() error {
 	a.tunRouter = tunRouter
 
 	a.isConnected = true
-	fmt.Printf("[NetConnect GUI] Connected directly on %s\n", dev.Name())
 	return nil
 }
 
-// Disconnect delegates to root Daemon or cleans up local state.
 func (a *App) Disconnect() error {
-	fmt.Println("[NetConnect GUI] Disconnect button clicked!")
 	if a.isDaemonAvailable() {
 		resp, err := a.httpClient.Post(daemonBaseURL+"/api/disconnect", "application/json", nil)
 		if err != nil {
-			fmt.Printf("[NetConnect GUI] Daemon disconnect error: %v\n", err)
 			return fmt.Errorf("failed to contact daemon: %w", err)
 		}
 		defer resp.Body.Close()
-		fmt.Println("[NetConnect GUI] Disconnected via background daemon.")
 	}
 
 	a.mu.Lock()
@@ -396,12 +358,9 @@ func (a *App) Disconnect() error {
 	}
 
 	a.isConnected = false
-	a.isDevMock = false
-	fmt.Println("[NetConnect GUI] Disconnected successfully.")
 	return nil
 }
 
-// GetAutoStart checks if NetConnect is configured to start on boot.
 func (a *App) GetAutoStart() bool {
 	cmd := exec.Command("systemctl", "--user", "is-enabled", "netconnect.service")
 	if err := cmd.Run(); err == nil {
@@ -424,7 +383,6 @@ func (a *App) GetAutoStart() bool {
 	return false
 }
 
-// SetAutoStart enables or disables automatic start on system boot via systemd user service.
 func (a *App) SetAutoStart(enabled bool) error {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -481,13 +439,12 @@ X-GNOME-Autostart-enabled=true
 		_ = os.WriteFile(autostartPath, []byte(autostartContent), 0644)
 
 		return nil
-	} else {
-		_ = exec.Command("systemctl", "--user", "disable", "netconnect.service").Run()
-		_ = os.Remove(userServicePath)
-		_ = exec.Command("systemctl", "--user", "daemon-reload").Run()
-		_ = os.Remove(autostartPath)
-
-		return nil
 	}
-}
 
+	_ = exec.Command("systemctl", "--user", "disable", "netconnect.service").Run()
+	_ = os.Remove(userServicePath)
+	_ = exec.Command("systemctl", "--user", "daemon-reload").Run()
+	_ = os.Remove(autostartPath)
+
+	return nil
+}
