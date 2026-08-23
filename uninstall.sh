@@ -12,8 +12,11 @@ echo "========================================="
 echo " Uninstalling NetConnect from System"
 echo "========================================="
 
-# 1. Stop & Disable Systemd Service
-echo "[1/4] Stopping and removing systemd service..."
+# 1. Stop all running NetConnect instances and services
+echo "[1/4] Stopping all active NetConnect processes and services..."
+
+
+# Stop systemd system service
 if systemctl is-active --quiet netconnect.service 2>/dev/null; then
     systemctl stop netconnect.service || true
 fi
@@ -22,6 +25,15 @@ if systemctl is-enabled --quiet netconnect.service 2>/dev/null; then
 fi
 rm -f /etc/systemd/system/netconnect.service
 systemctl daemon-reload
+
+# Stop user services if running under sudo
+if [ -n "${SUDO_USER}" ]; then
+    sudo -u "${SUDO_USER}" bash -c "systemctl --user stop netconnect.service 2>/dev/null || true; systemctl --user disable netconnect.service 2>/dev/null || true"
+fi
+
+# Kill any remaining running netconnect processes
+killall netconnect 2>/dev/null || pkill -x netconnect 2>/dev/null || true
+
 
 # 2. Remove Binary
 echo "[2/4] Removing binary..."
