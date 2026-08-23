@@ -7,6 +7,8 @@ export function Connect():Promise<void>;
 
 export function Disconnect():Promise<void>;
 
+export function GetAutoStart():Promise<boolean>;
+
 export function GetSettings():Promise<main.SettingsData>;
 
 export function HideWindow():Promise<void>;
@@ -22,6 +24,8 @@ export function PollDeviceLogin(arg1:string):Promise<auth.DeviceTokenResponse>;
 export function QuitApp():Promise<void>;
 
 export function SaveSettings(arg1:string,arg2:string):Promise<void>;
+
+export function SetAutoStart(arg1:boolean):Promise<void>;
 
 export function ShowWindow():Promise<void>;
 

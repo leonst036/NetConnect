@@ -4,7 +4,13 @@ import (
 	"context"
 	_ "embed"
 	"embed"
+	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
 
+	"github.com/leonst036/NetConnect/daemon"
+	"github.com/leonst036/NetConnect/utils"
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
@@ -18,7 +24,39 @@ var assets embed.FS
 //go:embed build/appicon.png
 var appIcon []byte
 
+func runDaemon() {
+	if os.Geteuid() != 0 {
+		fmt.Println("Notice: NetConnect Daemon is running without root. For TUN interface creation, run with sudo/pkexec.")
+	}
+
+	relayURL := utils.GetEnv("NETLINK_RELAY_URL", "http://localhost:4535")
+	targetID := utils.GetEnv("NETLINK_TARGET_ID", "")
+
+	srv := daemon.NewDaemonServer(relayURL, targetID)
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		if err := srv.Start(4545); err != nil {
+			fmt.Printf("[NetConnect Daemon] Server error: %v\n", err)
+		}
+	}()
+
+	fmt.Println("[NetConnect Daemon] Control server listening on http://127.0.0.1:4545")
+	<-sigChan
+	fmt.Println("\n[NetConnect Daemon] Shutting down...")
+	srv.Stop()
+}
+
 func main() {
+	for _, arg := range os.Args[1:] {
+		if arg == "--daemon" || arg == "daemon" {
+			runDaemon()
+			return
+		}
+	}
+
 	app := NewApp()
 
 	err := wails.Run(&options.App{
@@ -66,3 +104,4 @@ func main() {
 		println("Error:", err.Error())
 	}
 }
+

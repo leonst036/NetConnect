@@ -54,6 +54,7 @@ export namespace main {
 	    deviceName: string;
 	    username?: string;
 	    isAuthenticated: boolean;
+	    autoStart: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new SettingsData(source);
@@ -65,6 +66,7 @@ export namespace main {
 	        this.deviceName = source["deviceName"];
 	        this.username = source["username"];
 	        this.isAuthenticated = source["isAuthenticated"];
+	        this.autoStart = source["autoStart"];
 	    }
 	}
 

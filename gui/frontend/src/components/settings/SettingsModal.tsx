@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { 
   Alert, 
+  Box,
   Button, 
   Dialog, 
   DialogActions, 
   DialogContent, 
   DialogTitle, 
   IconButton, 
+  Switch,
   Typography 
 } from "@mui/material";
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
@@ -15,10 +17,13 @@ import {
   StartDeviceLogin, 
   PollDeviceLogin, 
   Logout, 
-  OpenVerificationURL 
+  OpenVerificationURL,
+  GetAutoStart,
+  SetAutoStart
 } from "../../../wailsjs/go/main/App";
 import { AuthCard } from "./AuthCard";
 import { ServerConfigFields } from "./ServerConfigFields";
+
 
 export interface SettingsModalProps {
   isSettingsOpen: boolean;
@@ -55,6 +60,8 @@ export const SettingsModal = ({
   const [verificationUrl, setVerificationUrl] = useState('');
   const [pairingStatus, setPairingStatus] = useState('');
   const [copied, setCopied] = useState(false);
+  const [autoStart, setAutoStart] = useState(false);
+  const [isTogglingAutoStart, setIsTogglingAutoStart] = useState(false);
   const pollTimerRef = useRef<number | null>(null);
   const isCancelledRef = useRef(false);
 
@@ -77,11 +84,28 @@ export const SettingsModal = ({
       setVerificationUrl('');
       setCopied(false);
       stopPolling();
+      GetAutoStart().then((res) => setAutoStart(res)).catch(() => {});
     } else {
       stopPolling();
     }
     return () => stopPolling();
   }, [isSettingsOpen, serverName, deviceName]);
+
+  const handleToggleAutoStart = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = event.target.checked;
+    setIsTogglingAutoStart(true);
+    setAutoStart(checked);
+    try {
+      await SetAutoStart(checked);
+    } catch (err: unknown) {
+      setAutoStart(!checked);
+      const message = err instanceof Error ? err.message : String(err);
+      setErrorMessage(message || "Failed to update auto-start setting");
+    } finally {
+      setIsTogglingAutoStart(false);
+    }
+  };
+
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -258,11 +282,42 @@ export const SettingsModal = ({
           disabled={isSaving || isPairing}
         />
 
+        {/* Auto-Start Systemd Setting */}
+        <Box
+          sx={{
+            mt: 2,
+            p: 1.5,
+            borderRadius: '16px',
+            bgcolor: 'action.hover',
+            border: '1px solid',
+            borderColor: 'divider',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <Box sx={{ pr: 1 }}>
+            <Typography variant="body2" fontWeight={600} color="text.primary">
+              Start on Boot
+            </Typography>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>
+              Automatically launch NetConnect systemd service on boot
+            </Typography>
+          </Box>
+          <Switch
+            checked={autoStart}
+            onChange={handleToggleAutoStart}
+            disabled={isSaving || isPairing || isTogglingAutoStart}
+            color="primary"
+          />
+        </Box>
+
         {errorMessage && (
           <Alert severity="error" sx={{ mt: 2, borderRadius: '12px' }}>
             {errorMessage}
           </Alert>
         )}
+
       </DialogContent>
 
       <DialogActions sx={{ px: 2, pb: 1.5, pt: 1, gap: 1 }}>

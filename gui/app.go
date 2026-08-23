@@ -6,8 +6,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"sync"
 	"time"
+
 
 	"github.com/leonst036/NetConnect/network"
 	netlink "github.com/leonst036/NetConnect/network/NetLink"
@@ -24,7 +28,9 @@ type SettingsData struct {
 	DeviceName      string `json:"deviceName"`
 	Username        string `json:"username,omitempty"`
 	IsAuthenticated bool   `json:"isAuthenticated"`
+	AutoStart       bool   `json:"autoStart"`
 }
+
 
 // App struct
 type App struct {
@@ -86,6 +92,7 @@ func (a *App) GetSettings() SettingsData {
 					DeviceName:      data.DeviceName,
 					Username:        data.Username,
 					IsAuthenticated: data.IsAuthenticated,
+					AutoStart:       a.GetAutoStart(),
 				}
 			}
 		}
@@ -100,8 +107,10 @@ func (a *App) GetSettings() SettingsData {
 		DeviceName:      a.client.TargetID(),
 		Username:        a.client.Username(),
 		IsAuthenticated: a.client.Token() != "",
+		AutoStart:       a.GetAutoStart(),
 	}
 }
+
 
 // SaveSettings validates and applies settings.
 func (a *App) SaveSettings(serverAddress string, deviceName string) error {
@@ -391,3 +400,94 @@ func (a *App) Disconnect() error {
 	fmt.Println("[NetConnect GUI] Disconnected successfully.")
 	return nil
 }
+
+// GetAutoStart checks if NetConnect is configured to start on boot.
+func (a *App) GetAutoStart() bool {
+	cmd := exec.Command("systemctl", "--user", "is-enabled", "netconnect.service")
+	if err := cmd.Run(); err == nil {
+		return true
+	}
+
+	cmdSys := exec.Command("systemctl", "is-enabled", "netconnect.service")
+	if err := cmdSys.Run(); err == nil {
+		return true
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err == nil {
+		desktopPath := filepath.Join(homeDir, ".config", "autostart", "netconnect.desktop")
+		if _, err := os.Stat(desktopPath); err == nil {
+			return true
+		}
+	}
+
+	return false
+}
+
+// SetAutoStart enables or disables automatic start on system boot via systemd user service.
+func (a *App) SetAutoStart(enabled bool) error {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	userServiceDir := filepath.Join(homeDir, ".config", "systemd", "user")
+	userServicePath := filepath.Join(userServiceDir, "netconnect.service")
+	autostartDir := filepath.Join(homeDir, ".config", "autostart")
+	autostartPath := filepath.Join(autostartDir, "netconnect.desktop")
+
+	if enabled {
+		exe, err := os.Executable()
+		if err != nil {
+			exe = "/usr/local/bin/netconnect"
+		}
+
+		if err := os.MkdirAll(userServiceDir, 0755); err != nil {
+			return fmt.Errorf("failed to create systemd user dir: %w", err)
+		}
+
+		serviceContent := fmt.Sprintf(`[Unit]
+Description=NetConnect Overlay VPN Service
+After=network.target default.target
+
+[Service]
+Type=simple
+ExecStart=%s
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=default.target
+`, exe)
+
+		if err := os.WriteFile(userServicePath, []byte(serviceContent), 0644); err != nil {
+			return fmt.Errorf("failed to write systemd user service: %w", err)
+		}
+
+		_ = exec.Command("systemctl", "--user", "daemon-reload").Run()
+		_ = exec.Command("systemctl", "--user", "enable", "netconnect.service").Run()
+
+		_ = os.MkdirAll(autostartDir, 0755)
+		autostartContent := fmt.Sprintf(`[Desktop Entry]
+Type=Application
+Name=NetConnect
+Comment=NetConnect VPN Auto-Start
+Exec=%s
+Icon=netconnect
+Terminal=false
+Categories=Network;RemoteAccess;
+X-GNOME-Autostart-enabled=true
+`, exe)
+		_ = os.WriteFile(autostartPath, []byte(autostartContent), 0644)
+
+		return nil
+	} else {
+		_ = exec.Command("systemctl", "--user", "disable", "netconnect.service").Run()
+		_ = os.Remove(userServicePath)
+		_ = exec.Command("systemctl", "--user", "daemon-reload").Run()
+		_ = os.Remove(autostartPath)
+
+		return nil
+	}
+}
+

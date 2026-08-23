@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=NetConnect
+Comment=Secure overlay networking and tunnel client for NetLink
+Exec=/usr/local/bin/netconnect %U
+Icon=netconnect
+Categories=Network;RemoteAccess;
+Terminal=false
+StartupWMClass=netconnect

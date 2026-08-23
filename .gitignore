@@ -52,6 +52,8 @@ Thumbs.db
 *.swp
 *.swo
 *~
+.cache/
+
 .vscode/*
 !.vscode/launch.json
 !.vscode/settings.json
