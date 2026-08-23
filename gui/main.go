@@ -1,9 +1,7 @@
 package main
 
 import (
-	_ "embed"
 	"embed"
-	"os"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
@@ -17,26 +15,19 @@ var assets embed.FS
 //go:embed build/appicon.png
 var appIcon []byte
 
-func init() {
-	if os.Getenv("GDK_BACKEND") == "" {
-		_ = os.Setenv("GDK_BACKEND", "x11")
-	}
-}
-
 func main() {
 	app := NewApp()
 
 	err := wails.Run(&options.App{
-		Title:             "NetConnect",
-		Width:             480,
-		Height:            600,
-		MinWidth:          480,
-		MinHeight:         600,
-		MaxWidth:          480,
-		MaxHeight:         600,
-		DisableResize:     true,
-		AlwaysOnTop:       false,
-		HideWindowOnClose: true,
+		Title:         "NetConnect",
+		Width:         480,
+		Height:        600,
+		MinWidth:      480,
+		MinHeight:     600,
+		MaxWidth:      480,
+		MaxHeight:     600,
+		DisableResize: true,
+		AlwaysOnTop:   false,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
