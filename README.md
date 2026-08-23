@@ -44,3 +44,15 @@ NetConnect can be configured via environment variables or directly inside the de
 | Variable | Default | Description |
 |---|---|---|
 | `NETLINK_RELAY_URL` | `http://localhost:4535` | The URL of the NetLink relay server |
+
+---
+
+## Authentication & Setup
+
+> [!IMPORTANT]
+> **Authentication Required:** Before establishing a connection, you must authorize your device via NetLink in the settings.
+
+1. **Open Settings**: Click the settings (gear) icon in the top-left corner of the GUI.
+2. **Authorize Device**: Click **Login with NetLink** to start the web-based device authorization flow.
+3. **Approve in Browser**: Follow the verification link, enter your NetLink credentials, and approve the device.
+4. **Connect**: Once linked, return to NetConnect and click the central power button to connect to your overlay network.
