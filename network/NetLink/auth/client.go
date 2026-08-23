@@ -16,6 +16,7 @@ type Client struct {
 	targetID   string
 	token      string
 	ticket     string
+	username   string
 	mu         sync.RWMutex
 	httpClient *http.Client
 }
@@ -124,5 +125,21 @@ func (c *Client) Token() string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.token
+}
+
+// Username returns the authenticated username, if logged in.
+func (c *Client) Username() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.username
+}
+
+// Logout clears the stored tokens, tickets, and user session.
+func (c *Client) Logout() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.token = ""
+	c.ticket = ""
+	c.username = ""
 }
 
