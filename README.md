@@ -12,19 +12,30 @@ NetConnect is the native Linux desktop client for [NetLink](https://github.com/l
 
 ## Installation
 
-Run the installer script with root privileges:
+### Quick Install (Latest Release)
+
+Install with a single command (downloads the pre-built binary without needing Go or Node):
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/leonst036/NetConnect/main/install.sh | sudo bash
+```
+
+### Install from Source
+
+Clone the repository and run the installer:
+
+```bash
+git clone https://github.com/leonst036/NetConnect.git
+cd NetConnect
 sudo ./install.sh
 ```
 
-This compiles the binary, installs it to `/usr/local/bin/netconnect`, adds the `.desktop` launcher and application icons, and enables the systemd background daemon (`netconnect.service`).
-
-To uninstall:
+### Uninstall
 
 ```bash
-sudo ./uninstall.sh
+sudo netconnect-uninstall
 ```
+
 
 ## Development
 
