@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/leonst036/NetConnect/utils"
 )
@@ -70,13 +72,28 @@ func (c *Client) getTokenLocked(ctx context.Context) (string, error) {
 
 // requestDeviceToken requests a device JWT token via /api/validate-target.
 func (c *Client) requestDeviceToken(ctx context.Context) (string, error) {
-	endpoint := fmt.Sprintf("%s/api/validate-target?target=%s", c.relayURL, c.targetID)
+	return c.requestDeviceTokenFor(ctx, c.relayURL, c.targetID)
+}
+
+// requestDeviceTokenFor requests a device JWT token for a specified relay URL and target ID.
+func (c *Client) requestDeviceTokenFor(ctx context.Context, relayURL, targetID string) (string, error) {
+	if !strings.HasPrefix(relayURL, "http://") && !strings.HasPrefix(relayURL, "https://") {
+		relayURL = "http://" + relayURL
+	}
+	relayURL = strings.TrimRight(relayURL, "/")
+
+	endpoint := fmt.Sprintf("%s/api/validate-target?target=%s", relayURL, targetID)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, nil)
 	if err != nil {
 		return "", err
 	}
 
-	resp, err := c.httpClient.Do(req)
+	httpClient := c.httpClient
+	if httpClient == nil {
+		httpClient = &http.Client{Timeout: 10 * time.Second}
+	}
+
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("validate-target request failed: %w", err)
 	}
@@ -100,10 +117,45 @@ func (c *Client) requestDeviceToken(ctx context.Context) (string, error) {
 		if res.Error != "" {
 			return "", fmt.Errorf("device validation failed: %s", res.Error)
 		}
-		return "", fmt.Errorf("device target %s is not valid or no token returned", c.targetID)
+		return "", fmt.Errorf("device target %s is not valid or no token returned", targetID)
 	}
 
 	return res.Token, nil
+}
+
+func (c *Client) UpdateConfig(ctx context.Context, newRelayURL, newTargetID string) error {
+	c.mu.RLock()
+	curRelayURL := c.relayURL
+	curTargetID := c.targetID
+	c.mu.RUnlock()
+
+	targetRelayURL := strings.TrimSpace(newRelayURL)
+	if targetRelayURL == "" {
+		targetRelayURL = curRelayURL
+	}
+	if !strings.HasPrefix(targetRelayURL, "http://") && !strings.HasPrefix(targetRelayURL, "https://") {
+		targetRelayURL = "http://" + targetRelayURL
+	}
+	targetRelayURL = strings.TrimRight(targetRelayURL, "/")
+
+	targetDeviceName := strings.TrimSpace(newTargetID)
+	if targetDeviceName == "" {
+		targetDeviceName = curTargetID
+	}
+
+	newToken, err := c.requestDeviceTokenFor(ctx, targetRelayURL, targetDeviceName)
+	if err != nil {
+		return fmt.Errorf("failed to validate device '%s' on %s: %w", targetDeviceName, targetRelayURL, err)
+	}
+
+	c.mu.Lock()
+	c.relayURL = targetRelayURL
+	c.targetID = targetDeviceName
+	c.token = newToken
+	c.ticket = ""
+	c.mu.Unlock()
+
+	return nil
 }
 
 // login logs in using username and password to obtain a token.

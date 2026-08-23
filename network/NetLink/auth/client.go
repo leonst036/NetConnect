@@ -107,10 +107,22 @@ func (c *Client) SetHTTPClient(client *http.Client) {
 
 // RelayURL returns the configured base relay URL.
 func (c *Client) RelayURL() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.relayURL
 }
 
 // TargetID returns the device target ID.
 func (c *Client) TargetID() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.targetID
 }
+
+// Token returns the current device token.
+func (c *Client) Token() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.token
+}
+

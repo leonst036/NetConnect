@@ -5,3 +5,11 @@
 export function Connect() {
   return window['go']['main']['App']['Connect']();
 }
+
+export function GetSettings() {
+  return window['go']['main']['App']['GetSettings']();
+}
+
+export function SaveSettings(arg1, arg2) {
+  return window['go']['main']['App']['SaveSettings'](arg1, arg2);
+}

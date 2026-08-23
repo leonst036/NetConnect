@@ -240,9 +240,27 @@
   transition: background-color 0.2s, transform 0.15s;
 }
 
-.popup-action-btn:hover {
+.popup-action-btn:hover:not(:disabled) {
   background: #e9d5ff;
   transform: translateY(-1px);
+}
+
+.popup-action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.popup-error {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 8px;
+  color: #fca5a5;
+  font-size: 13px;
+  line-height: 1.4;
+  word-break: break-word;
 }
 
 @keyframes popupFadeIn {

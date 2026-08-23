@@ -1,24 +1,38 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Box, IconButton, Typography } from '@mui/material'
 import { WindowLayout } from '@netlink/ui'
 import SettingsIcon from '@mui/icons-material/Settings'
 import PowerSettingsNewIcon from '@mui/icons-material/PowerSettingsNew'
 import './App.css'
-import { Connect } from "../wailsjs/go/main/App";
+import { Connect, GetSettings } from "../wailsjs/go/main/App";
 import { Settings } from './components/Settings'
 
 function App() {
   const [isConnected, setIsConnected] = useState(true)
-  const [serverName, setServerName] = useState('<server>')
-  const [deviceName, setDeviceName] = useState('<device>')
+  const [serverName, setServerName] = useState('http://localhost:5173')
+  const [deviceName, setDeviceName] = useState('netconnect-device')
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+
+  // Fetch initial settings from Go backend on startup
+  useEffect(() => {
+    GetSettings()
+      .then((settings) => {
+        if (settings.serverAddress) setServerName(settings.serverAddress)
+        if (settings.deviceName) setDeviceName(settings.deviceName)
+      })
+      .catch((err) => {
+        console.error('[NetConnect] Failed to load initial settings:', err)
+      })
+  }, [])
 
   // Power button click handler with console log
   const handlePowerClick = () => {
     const nextState = !isConnected
     setIsConnected(nextState)
     if (nextState) {
-      Connect()
+      Connect().catch((err) => {
+        console.error('[NetConnect] Connection failed:', err)
+      })
     }
     console.log(
       `[NetConnect] Power button clicked! Status: ${nextState ? 'Connected' : 'Disconnected'} (Server: ${serverName})`
