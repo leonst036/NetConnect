@@ -241,10 +241,13 @@ func (a *App) ShowWindow() {
 }
 
 func (a *App) QuitApp() {
+	_ = a.Disconnect()
 	if a.ctx != nil {
 		runtime.Quit(a.ctx)
 	}
+	os.Exit(0)
 }
+
 
 func (a *App) IsConnected() bool {
 	if a.isDaemonAvailable() {

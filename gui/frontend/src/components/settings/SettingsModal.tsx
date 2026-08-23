@@ -12,6 +12,7 @@ import {
   Typography 
 } from "@mui/material";
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
+import PowerSettingsNewRoundedIcon from '@mui/icons-material/PowerSettingsNewRounded';
 import { 
   SaveSettings, 
   StartDeviceLogin, 
@@ -19,8 +20,10 @@ import {
   Logout, 
   OpenVerificationURL,
   GetAutoStart,
-  SetAutoStart
+  SetAutoStart,
+  QuitApp
 } from "../../../wailsjs/go/main/App";
+
 import { AuthCard } from "./AuthCard";
 import { ServerConfigFields } from "./ServerConfigFields";
 
@@ -107,6 +110,14 @@ export const SettingsModal = ({
   };
 
 
+  const handleQuit = async () => {
+    try {
+      await QuitApp();
+    } catch {
+      // Ignored
+    }
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     setErrorMessage(null);
@@ -123,6 +134,7 @@ export const SettingsModal = ({
       setIsSaving(false);
     }
   };
+
 
   const handleStartDeviceLogin = async () => {
     setIsSaving(true);
@@ -320,28 +332,40 @@ export const SettingsModal = ({
 
       </DialogContent>
 
-      <DialogActions sx={{ px: 2, pb: 1.5, pt: 1, gap: 1 }}>
+      <DialogActions sx={{ px: 2, pb: 1.5, pt: 1, display: 'flex', justifyContent: 'space-between' }}>
         <Button
-          onClick={handleCloseSettings}
-          color="inherit"
+          onClick={handleQuit}
+          color="error"
+          variant="text"
+          startIcon={<PowerSettingsNewRoundedIcon />}
           disabled={isSaving && !isPairing}
-          sx={{ borderRadius: '20px', textTransform: 'none' }}
+          sx={{ borderRadius: '20px', textTransform: 'none', fontWeight: 600 }}
         >
-          Cancel
+          Quit
         </Button>
-        <Button
-          variant="contained"
-          onClick={handleSave}
-          disabled={isSaving || isPairing}
-          sx={{
-            borderRadius: '20px',
-            textTransform: 'none',
-            fontWeight: 600,
-            px: 3,
-          }}
-        >
-          {isSaving ? "Saving..." : "Save & Close"}
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            onClick={handleCloseSettings}
+            color="inherit"
+            disabled={isSaving && !isPairing}
+            sx={{ borderRadius: '20px', textTransform: 'none' }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleSave}
+            disabled={isSaving || isPairing}
+            sx={{
+              borderRadius: '20px',
+              textTransform: 'none',
+              fontWeight: 600,
+              px: 3,
+            }}
+          >
+            {isSaving ? "Saving..." : "Save & Close"}
+          </Button>
+        </Box>
       </DialogActions>
     </Dialog>
   );
