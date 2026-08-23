@@ -23,13 +23,21 @@ if systemctl is-active --quiet netconnect.service 2>/dev/null; then
     systemctl stop netconnect.service || true
 fi
 
-# 2. Build NetConnect binary if missing or if rebuild requested
+# 2. Build NetConnect binary
 echo "[2/5] Building NetConnect application..."
 if [ -n "${SUDO_USER}" ]; then
-    sudo -u "${SUDO_USER}" bash -c "cd '${SCRIPT_DIR}/gui' && wails build -tags webkit2_41 -o netconnect"
+    USER_HOME=$(eval echo "~${SUDO_USER}")
+    sudo -u "${SUDO_USER}" bash -c "export PATH=\"${USER_HOME}/go/bin:${USER_HOME}/.local/bin:\$PATH\"; cd '${SCRIPT_DIR}/gui' && (wails build -tags webkit2_41 -o netconnect || true)"
 else
-    (cd "${SCRIPT_DIR}/gui" && wails build -tags webkit2_41 -o netconnect)
+    export PATH="${HOME}/go/bin:${HOME}/.local/bin:${PATH}"
+    (cd "${SCRIPT_DIR}/gui" && (wails build -tags webkit2_41 -o netconnect || true))
 fi
+
+if [ ! -f "${BIN_SRC}" ]; then
+    echo "❌ Error: Could not find or build ${BIN_SRC}."
+    exit 1
+fi
+
 
 # 3. Install Binary
 echo "[3/5] Installing binary to /usr/local/bin/netconnect..."
