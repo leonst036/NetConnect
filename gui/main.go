@@ -17,9 +17,15 @@ func main() {
 
 	// Create application with options
 	err := wails.Run(&options.App{
-		Title:  "gui",
-		Width:  1024,
-		Height: 768,
+		Title:         "NetConnect",
+		Width:         480,
+		Height:        600,
+		MinWidth:      480,
+		MinHeight:     600,
+		MaxWidth:      480,
+		MaxHeight:     600,
+		DisableResize: true,
+		AlwaysOnTop:   false,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},

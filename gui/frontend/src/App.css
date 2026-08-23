@@ -1,59 +1,268 @@
-#app {
-    height: 100vh;
-    text-align: center;
+/* NetConnect App Styling (480x600 px) */
+
+.netconnect-frame {
+  width: 480px;
+  height: 600px;
+  max-width: 480px;
+  max-height: 600px;
+  margin: 0 auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  box-sizing: border-box;
+  padding: 40px 30px;
+  overflow: hidden;
+  user-select: none;
 }
 
-#logo {
-    display: block;
-    width: 50%;
-    height: 50%;
-    margin: auto;
-    padding: 10% 0 0;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-size: 100% 100%;
-    background-origin: content-box;
+/* Header */
+.netconnect-header {
+  width: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  margin-bottom: 130px;
 }
 
-.result {
-    height: 20px;
-    line-height: 20px;
-    margin: 1.5rem auto;
+.settings-btn {
+  position: absolute !important;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #d8b4fe !important;
+  background: transparent !important;
+  padding: 6px !important;
+  border-radius: 50% !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-.input-box .btn {
-    width: 60px;
-    height: 30px;
-    line-height: 30px;
-    border-radius: 3px;
-    border: none;
-    margin: 0 0 0 20px;
-    padding: 0 8px;
-    cursor: pointer;
+.settings-btn:hover {
+  color: #f3e8ff !important;
+  transform: translateY(-50%) rotate(45deg);
+  background-color: rgba(216, 180, 254, 0.15) !important;
 }
 
-.input-box .btn:hover {
-    background-image: linear-gradient(to top, #cfd9df 0%, #e2ebf0 100%);
-    color: #333333;
+.settings-btn:active {
+  transform: translateY(-50%) rotate(90deg) scale(0.92);
 }
 
-.input-box .input {
-    border: none;
-    border-radius: 3px;
-    outline: none;
-    height: 30px;
-    line-height: 30px;
-    padding: 0 10px;
-    background-color: rgba(240, 240, 240, 1);
-    -webkit-font-smoothing: antialiased;
+.settings-icon {
+  font-size: 32px !important;
 }
 
-.input-box .input:hover {
-    border: none;
-    background-color: rgba(255, 255, 255, 1);
+.netconnect-title {
+  font-family: 'Outfit', sans-serif !important;
+  font-size: 42px !important;
+  font-weight: 600 !important;
+  color: #f8fafc !important;
+  letter-spacing: -0.5px;
+  margin: 0 !important;
+  line-height: 1 !important;
+  text-align: center;
 }
 
-.input-box .input:focus {
-    border: none;
-    background-color: rgba(255, 255, 255, 1);
+/* Center Section */
+.netconnect-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 30px;
+}
+
+/* Power Button */
+.power-button {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  background-color: #d8b4fe;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 35px rgba(216, 180, 254, 0.35);
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.22s ease,
+    background-color 0.25s ease,
+    filter 0.25s ease;
+  position: relative;
+}
+
+.power-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 45px rgba(216, 180, 254, 0.55);
+  filter: brightness(1.05);
+}
+
+.power-button:active {
+  transform: scale(0.94);
+  box-shadow: 0 0 20px rgba(216, 180, 254, 0.25);
+}
+
+.power-button.disconnected {
+  background-color: #334155;
+  box-shadow: 0 0 25px rgba(51, 65, 85, 0.3);
+}
+
+.power-button.disconnected .power-icon {
+  color: #94a3b8 !important;
+}
+
+.power-button.disconnected:hover {
+  background-color: #475569;
+  box-shadow: 0 0 35px rgba(71, 85, 105, 0.5);
+}
+
+.power-icon {
+  font-size: 64px !important;
+  color: #1e1b4b !important;
+  transition: color 0.25s ease;
+}
+
+/* Status Text */
+.status-text {
+  font-family: 'Outfit', sans-serif !important;
+  font-size: 16px !important;
+  font-weight: 500 !important;
+  color: #f8fafc !important;
+  letter-spacing: 0.2px;
+  text-align: center;
+}
+
+.popup-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: popupFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.popup-window {
+  width: 380px;
+  min-height: 280px;
+  background: #1e1b4b;
+  border: 1px solid rgba(216, 180, 254, 0.25);
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 25px rgba(216, 180, 254, 0.15);
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  box-sizing: border-box;
+  animation: popupScaleIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 12px;
+  margin-bottom: 16px;
+}
+
+.popup-title {
+  color: #f8fafc !important;
+  font-weight: 600 !important;
+}
+
+.popup-close-btn {
+  color: #94a3b8 !important;
+  transition: color 0.2s ease !important;
+}
+
+.popup-close-btn:hover {
+  color: #f8fafc !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.popup-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+}
+
+.popup-label {
+  font-size: 13px;
+  color: #cbd5e1;
+  font-weight: 500;
+}
+
+.popup-input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(216, 180, 254, 0.3);
+  color: #f8fafc;
+  font-size: 14px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.popup-input:focus {
+  border-color: #d8b4fe;
+  box-shadow: 0 0 10px rgba(216, 180, 254, 0.3);
+}
+
+.popup-info {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.popup-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.popup-action-btn {
+  background: #d8b4fe;
+  color: #1e1b4b;
+  border: none;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 8px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.15s;
+}
+
+.popup-action-btn:hover {
+  background: #e9d5ff;
+  transform: translateY(-1px);
+}
+
+@keyframes popupFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes popupScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
