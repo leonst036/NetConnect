@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	_ "embed"
 	"embed"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/linux"
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 //go:embed all:frontend/dist
@@ -20,24 +22,28 @@ func main() {
 	app := NewApp()
 
 	err := wails.Run(&options.App{
-		Title:             "NetConnect",
-		Width:             480,
-		Height:            600,
-		MinWidth:          480,
-		MinHeight:         600,
-		MaxWidth:          480,
-		MaxHeight:         600,
-		DisableResize:     true,
-		AlwaysOnTop:       false,
-		HideWindowOnClose: true,
+		Title:         "NetConnect",
+		Width:         480,
+		Height:        600,
+		MinWidth:      480,
+		MinHeight:     600,
+		MaxWidth:      480,
+		MaxHeight:     600,
+		DisableResize: true,
+		AlwaysOnTop:   false,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup:        app.startup,
 		OnShutdown:       app.shutdown,
+		OnBeforeClose: func(ctx context.Context) bool {
+			runtime.WindowMinimise(ctx)
+			return true
+		},
 		Linux: &linux.Options{
-			Icon: appIcon,
+			Icon:        appIcon,
+			ProgramName: "netconnect",
 		},
 		Bind: []interface{}{
 			app,
