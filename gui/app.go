@@ -237,6 +237,27 @@ func (a *App) OpenVerificationURL(url string) {
 	}
 }
 
+// HideWindow minimizes/hides the main application window to the tray.
+func (a *App) HideWindow() {
+	if a.ctx != nil {
+		runtime.WindowHide(a.ctx)
+	}
+}
+
+// ShowWindow restores and focuses the main application window.
+func (a *App) ShowWindow() {
+	if a.ctx != nil {
+		runtime.WindowShow(a.ctx)
+	}
+}
+
+// QuitApp terminates the application completely.
+func (a *App) QuitApp() {
+	if a.ctx != nil {
+		runtime.Quit(a.ctx)
+	}
+}
+
 // IsConnected returns whether the connection is active.
 func (a *App) IsConnected() bool {
 	if a.isDaemonAvailable() {

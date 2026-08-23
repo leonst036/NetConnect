@@ -14,6 +14,10 @@ export function GetSettings() {
   return window['go']['main']['App']['GetSettings']();
 }
 
+export function HideWindow() {
+  return window['go']['main']['App']['HideWindow']();
+}
+
 export function IsConnected() {
   return window['go']['main']['App']['IsConnected']();
 }
@@ -30,8 +34,16 @@ export function PollDeviceLogin(arg1) {
   return window['go']['main']['App']['PollDeviceLogin'](arg1);
 }
 
+export function QuitApp() {
+  return window['go']['main']['App']['QuitApp']();
+}
+
 export function SaveSettings(arg1, arg2) {
   return window['go']['main']['App']['SaveSettings'](arg1, arg2);
+}
+
+export function ShowWindow() {
+  return window['go']['main']['App']['ShowWindow']();
 }
 
 export function StartDeviceLogin(arg1, arg2) {
