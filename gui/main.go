@@ -1,15 +1,14 @@
 package main
 
 import (
-	"context"
 	_ "embed"
 	"embed"
+	"os"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 	"github.com/wailsapp/wails/v2/pkg/options/linux"
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 //go:embed all:frontend/dist
@@ -18,29 +17,32 @@ var assets embed.FS
 //go:embed build/appicon.png
 var appIcon []byte
 
+func init() {
+	if os.Getenv("GDK_BACKEND") == "" {
+		_ = os.Setenv("GDK_BACKEND", "x11")
+	}
+}
+
 func main() {
 	app := NewApp()
 
 	err := wails.Run(&options.App{
-		Title:         "NetConnect",
-		Width:         480,
-		Height:        600,
-		MinWidth:      480,
-		MinHeight:     600,
-		MaxWidth:      480,
-		MaxHeight:     600,
-		DisableResize: true,
-		AlwaysOnTop:   false,
+		Title:             "NetConnect",
+		Width:             480,
+		Height:            600,
+		MinWidth:          480,
+		MinHeight:         600,
+		MaxWidth:          480,
+		MaxHeight:         600,
+		DisableResize:     true,
+		AlwaysOnTop:       false,
+		HideWindowOnClose: true,
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
 		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
 		OnStartup:        app.startup,
 		OnShutdown:       app.shutdown,
-		OnBeforeClose: func(ctx context.Context) bool {
-			runtime.WindowMinimise(ctx)
-			return true
-		},
 		Linux: &linux.Options{
 			Icon:        appIcon,
 			ProgramName: "netconnect",
