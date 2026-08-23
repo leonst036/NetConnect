@@ -1,6 +1,7 @@
-import { IconButton, CircularProgress } from "@mui/material";
+import { Box, Button, CircularProgress, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import CheckIcon from '@mui/icons-material/Check';
 import { OpenVerificationURL } from "../../../wailsjs/go/main/App";
 
 interface DevicePairingBoxProps {
@@ -21,43 +22,74 @@ export const DevicePairingBox = ({
   onCancel,
 }: DevicePairingBoxProps) => {
   return (
-    <div className="auth-pairing-box">
-      <div className="pairing-spinner-row">
-        <CircularProgress size={18} sx={{ color: '#d8b4fe' }} />
-        <span className="pairing-status-text">{pairingStatus}</span>
-      </div>
+    <Stack spacing={2} sx={{ width: '100%', pt: 0.5 }}>
+      <Stack direction="row" spacing={1.5} alignItems="center">
+        <CircularProgress size={18} />
+        <Typography variant="body2" color="text.secondary">
+          {pairingStatus}
+        </Typography>
+      </Stack>
 
       {userCode && (
-        <div className="pairing-code-container">
-          <div className="pairing-code-label">Confirmation Code</div>
-          <div className="pairing-code-value" onClick={onCopyCode} title="Click to copy">
-            {userCode}
-            <IconButton size="small" sx={{ color: '#d8b4fe', ml: 1 }}>
-              <ContentCopyIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </div>
-          {copied && <span className="copied-hint">Copied to clipboard!</span>}
-        </div>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            p: 1.5,
+            borderRadius: '16px',
+            bgcolor: 'action.hover',
+            border: '1px dashed',
+            borderColor: 'divider',
+            gap: 0.5,
+          }}
+        >
+          <Typography variant="caption" color="text.secondary" sx={{ letterSpacing: 0.5, textTransform: 'uppercase' }}>
+            Confirmation Code
+          </Typography>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <Typography
+              variant="h5"
+              sx={{
+                fontFamily: 'monospace',
+                fontWeight: 700,
+                letterSpacing: 3,
+                cursor: 'pointer',
+              }}
+              onClick={onCopyCode}
+            >
+              {userCode}
+            </Typography>
+            <Tooltip title={copied ? "Copied!" : "Copy code"} arrow>
+              <IconButton size="small" onClick={onCopyCode} color={copied ? "success" : "default"}>
+                {copied ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        </Box>
       )}
 
-      <div className="pairing-actions">
-        {verificationUrl && (
-          <button
-            type="button"
-            className="auth-browser-btn"
-            onClick={() => OpenVerificationURL(verificationUrl)}
-          >
-            <OpenInNewIcon sx={{ fontSize: 14 }} /> Open in Browser
-          </button>
-        )}
-        <button
-          type="button"
-          className="auth-cancel-btn"
+      <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ pt: 0.5 }}>
+        <Button
+          variant="text"
+          color="inherit"
           onClick={onCancel}
+          sx={{ borderRadius: '20px', textTransform: 'none' }}
         >
           Cancel
-        </button>
-      </div>
-    </div>
+        </Button>
+        {verificationUrl && (
+          <Button
+            variant="contained"
+            startIcon={<OpenInNewIcon fontSize="small" />}
+            onClick={() => OpenVerificationURL(verificationUrl)}
+            sx={{ borderRadius: '20px', textTransform: 'none', fontWeight: 600 }}
+          >
+            Open in Browser
+          </Button>
+        )}
+      </Stack>
+    </Stack>
   );
 };
+

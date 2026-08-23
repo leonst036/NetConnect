@@ -1,6 +1,15 @@
 import { useState, useEffect, useRef } from "react";
-import { IconButton, Typography } from "@mui/material";
-import CloseIcon from '@mui/icons-material/Close';
+import { 
+  Alert, 
+  Button, 
+  Dialog, 
+  DialogActions, 
+  DialogContent, 
+  DialogTitle, 
+  IconButton, 
+  Typography 
+} from "@mui/material";
+import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { 
   SaveSettings, 
   StartDeviceLogin, 
@@ -194,65 +203,92 @@ export const SettingsModal = ({
     }
   };
 
-  if (!isSettingsOpen) {
-    return null;
-  }
-
   return (
-    <div className="popup-overlay" onClick={handleCloseSettings}>
-      <div className="popup-window" onClick={(e) => e.stopPropagation()}>
-        <div className="popup-header">
-          <Typography variant="h6" className="popup-title">
-            Settings & Auth
-          </Typography>
-          <IconButton
-            className="popup-close-btn"
-            onClick={handleCloseSettings}
-            size="small"
-            disabled={isSaving && !isPairing}
-          >
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </div>
+    <Dialog
+      open={isSettingsOpen}
+      onClose={isSaving && !isPairing ? undefined : handleCloseSettings}
+      maxWidth="xs"
+      fullWidth
+      PaperProps={{
+        sx: {
+          borderRadius: '24px',
+          bgcolor: 'background.paper',
+          backgroundImage: 'none',
+          border: '1px solid',
+          borderColor: 'divider',
+          p: 1,
+        },
+      }}
+    >
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pb: 1 }}>
+        <Typography variant="h6" fontWeight={600} component="div">
+          Settings & Auth
+        </Typography>
+        <IconButton
+          onClick={handleCloseSettings}
+          size="small"
+          disabled={isSaving && !isPairing}
+          sx={{ color: 'text.secondary' }}
+        >
+          <CloseRoundedIcon fontSize="small" />
+        </IconButton>
+      </DialogTitle>
 
-        <div className="popup-body">
-          <AuthCard
-            isAuthenticated={isAuthenticated}
-            username={username}
-            isPairing={isPairing}
-            isSaving={isSaving}
-            userCode={userCode}
-            verificationUrl={verificationUrl}
-            pairingStatus={pairingStatus}
-            copied={copied}
-            onStartLogin={handleStartDeviceLogin}
-            onLogout={handleLogout}
-            onCancelPairing={handleCancelPairing}
-            onCopyCode={handleCopyCode}
-          />
+      <DialogContent sx={{ px: 2, py: 1 }}>
+        <AuthCard
+          isAuthenticated={isAuthenticated}
+          username={username}
+          isPairing={isPairing}
+          isSaving={isSaving}
+          userCode={userCode}
+          verificationUrl={verificationUrl}
+          pairingStatus={pairingStatus}
+          copied={copied}
+          onStartLogin={handleStartDeviceLogin}
+          onLogout={handleLogout}
+          onCancelPairing={handleCancelPairing}
+          onCopyCode={handleCopyCode}
+        />
 
-          <ServerConfigFields
-            serverAddress={tempServerName}
-            onServerAddressChange={setTempServerName}
-            deviceName={tempDeviceName}
-            onDeviceNameChange={setTempDeviceName}
-            disabled={isSaving || isPairing}
-          />
+        <ServerConfigFields
+          serverAddress={tempServerName}
+          onServerAddressChange={setTempServerName}
+          deviceName={tempDeviceName}
+          onDeviceNameChange={setTempDeviceName}
+          disabled={isSaving || isPairing}
+        />
 
-          {errorMessage && <div className="popup-error">{errorMessage}</div>}
-        </div>
+        {errorMessage && (
+          <Alert severity="error" sx={{ mt: 2, borderRadius: '12px' }}>
+            {errorMessage}
+          </Alert>
+        )}
+      </DialogContent>
 
-        <div className="popup-footer">
-          <button
-            type="button"
-            className="popup-action-btn"
-            onClick={handleSave}
-            disabled={isSaving || isPairing}
-          >
-            {isSaving ? "Saving..." : "Save & Close"}
-          </button>
-        </div>
-      </div>
-    </div>
+      <DialogActions sx={{ px: 2, pb: 1.5, pt: 1, gap: 1 }}>
+        <Button
+          onClick={handleCloseSettings}
+          color="inherit"
+          disabled={isSaving && !isPairing}
+          sx={{ borderRadius: '20px', textTransform: 'none' }}
+        >
+          Cancel
+        </Button>
+        <Button
+          variant="contained"
+          onClick={handleSave}
+          disabled={isSaving || isPairing}
+          sx={{
+            borderRadius: '20px',
+            textTransform: 'none',
+            fontWeight: 600,
+            px: 3,
+          }}
+        >
+          {isSaving ? "Saving..." : "Save & Close"}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
+

@@ -104,11 +104,9 @@ function App() {
   return (
     <WindowLayout padding={0}>
       <Box className="netconnect-frame">
-        {/* Ambient background glows from NetLink design system */}
         <div className="bg-glow" />
         <div className="bg-glow-2" />
 
-        {/* Plug Connection / Disconnection Background Layer */}
         {(isConnected || plugAnimationMode === 'disconnect') && (
           <PlugAnimation
             mode={plugAnimationMode || 'connected'}
@@ -122,7 +120,6 @@ function App() {
           />
         )}
 
-        {/* Top Header */}
         <Box className="netconnect-header">
           <IconButton
             className="settings-btn"
@@ -137,7 +134,6 @@ function App() {
           </Typography>
         </Box>
 
-        {/* Center Power Button & Connection Status */}
         <Box className="netconnect-center">
           <button
             type="button"
@@ -180,7 +176,6 @@ function App() {
           )}
         </Box>
 
-        {/* Bottom space / User badge */}
         <Box className="netconnect-footer">
           {isAuthenticated && (
             <div className="user-badge-pill" onClick={handleSettingsClick} title="Authenticated with NetLink">
@@ -190,7 +185,6 @@ function App() {
           )}
         </Box>
 
-        {/* Settings Popup Modal */}
         <Settings
           isSettingsOpen={isSettingsOpen}
           handleCloseSettings={handleCloseSettings}

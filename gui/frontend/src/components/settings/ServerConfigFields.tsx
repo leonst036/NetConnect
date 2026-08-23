@@ -1,3 +1,7 @@
+import { TextField, Stack, InputAdornment } from '@mui/material';
+import DnsOutlinedIcon from '@mui/icons-material/DnsOutlined';
+import DevicesOutlinedIcon from '@mui/icons-material/DevicesOutlined';
+
 interface ServerConfigFieldsProps {
   serverAddress: string;
   onServerAddressChange: (val: string) => void;
@@ -14,26 +18,44 @@ export const ServerConfigFields = ({
   disabled,
 }: ServerConfigFieldsProps) => {
   return (
-    <>
-      <label className="popup-label">Relay Server URL</label>
-      <input
-        type="text"
-        className="popup-input"
+    <Stack spacing={2} sx={{ mt: 1 }}>
+      <TextField
+        label="Relay Server URL"
+        placeholder="e.g. localhost:5171"
         value={serverAddress}
         onChange={(e) => onServerAddressChange(e.target.value)}
-        placeholder="e.g. https://relay.example.com"
         disabled={disabled}
+        fullWidth
+        size="small"
+        variant="outlined"
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <DnsOutlinedIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+            </InputAdornment>
+          ),
+          sx: { borderRadius: '12px' },
+        }}
       />
-
-      <label className="popup-label">Device Identifier</label>
-      <input
-        type="text"
-        className="popup-input"
+      <TextField
+        label="Device Identifier"
+        placeholder="e.g. netconnect-device"
         value={deviceName}
         onChange={(e) => onDeviceNameChange(e.target.value)}
-        placeholder="e.g. netconnect-laptop"
         disabled={disabled}
+        fullWidth
+        size="small"
+        variant="outlined"
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <DevicesOutlinedIcon fontSize="small" sx={{ color: 'text.secondary' }} />
+            </InputAdornment>
+          ),
+          sx: { borderRadius: '12px' },
+        }}
       />
-    </>
+    </Stack>
   );
 };
+
