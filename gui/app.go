@@ -115,6 +115,15 @@ func (a *App) SaveSettings(serverAddress string, deviceName string) error {
 			return fmt.Errorf("daemon settings update failed: %w", err)
 		}
 		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			var errData struct {
+				Error string `json:"error"`
+			}
+			_ = json.NewDecoder(resp.Body).Decode(&errData)
+			return fmt.Errorf("daemon settings update failed: %s", errData.Error)
+		}
+		return nil
 	}
 
 	if a.client == nil {

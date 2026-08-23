@@ -138,6 +138,7 @@ export const Settings = ({
           if (pollRes.status === 'approved' || (pollRes.token && !pollRes.error)) {
             setPairingStatus('Authorized successfully!');
             setIsAuthenticated(true);
+            setErrorMessage(null);
             if (pollRes.username) setUsername(pollRes.username);
             if (pollRes.target_id) {
               setTempDeviceName(pollRes.target_id);
