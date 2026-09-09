@@ -13,7 +13,21 @@ export default defineConfig({
       '@emotion/react': path.resolve(__dirname, 'node_modules/@emotion/react'),
       '@emotion/styled': path.resolve(__dirname, 'node_modules/@emotion/styled'),
       '@mui/material': path.resolve(__dirname, 'node_modules/@mui/material'),
+      '@mui/icons-material': path.resolve(__dirname, 'node_modules/@mui/icons-material'),
     },
-    dedupe: ['react', 'react-dom', '@emotion/react', '@emotion/styled', '@mui/material'],
+    dedupe: ['react', 'react-dom', '@emotion/react', '@emotion/styled', '@mui/material', '@mui/icons-material'],
+  },
+  optimizeDeps: {
+    include: [
+      'react',
+      'react-dom',
+      '@mui/material',
+      '@mui/icons-material',
+      '@emotion/react',
+      '@emotion/styled',
+      '@mui/icons-material/Settings',
+      '@mui/icons-material/PowerSettingsNew',
+      '@netlink/ui',
+    ],
   },
 })

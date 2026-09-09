@@ -32,6 +32,7 @@ type DaemonServer struct {
 	dev         *network.Device
 	routeMgr    *network.DeviceRouteManager
 	tunRouter   *network.TUNRouter
+	dnsMgr      *network.DNSManager
 	isConnected bool
 	server      *http.Server
 }
@@ -318,6 +319,10 @@ func (ds *DaemonServer) connectLocked() error {
 	go tunRouter.Start()
 	ds.tunRouter = tunRouter
 
+	dnsMgr := network.NewDNSManager(dev.Name(), ds.relayURL)
+	dnsMgr.Start()
+	ds.dnsMgr = dnsMgr
+
 	ds.isConnected = true
 	fmt.Printf("[NetConnect Daemon] Connected on %s (Overlay IP: %s)\n", dev.Name(), dev.OverlayIP.String())
 	return nil
@@ -329,6 +334,10 @@ func (ds *DaemonServer) disconnectLocked() error {
 		return nil
 	}
 
+	if ds.dnsMgr != nil {
+		ds.dnsMgr.Stop()
+		ds.dnsMgr = nil
+	}
 	if ds.routeMgr != nil {
 		ds.routeMgr.Stop()
 		ds.routeMgr = nil
