@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/leonst036/NetConnect/network"
 	netlink "github.com/leonst036/NetConnect/network/NetLink"
 	"github.com/leonst036/NetConnect/network/NetLink/auth"
+	"github.com/leonst036/NetConnect/network/domainroute"
 	"github.com/leonst036/NetConnect/utils"
 )
 
@@ -33,6 +35,7 @@ type DaemonServer struct {
 	routeMgr    *network.DeviceRouteManager
 	tunRouter   *network.TUNRouter
 	dnsMgr      *network.DNSManager
+	domainRoute *domainroute.Manager
 	isConnected bool
 	server      *http.Server
 }
@@ -42,10 +45,14 @@ func NewDaemonServer(relayURL, targetID string) *DaemonServer {
 		relayURL = utils.GetEnv("NETLINK_RELAY_URL", "http://localhost:4535")
 	}
 	client := auth.GetOrCreateClient(relayURL)
+	domainRouteAddr := utils.GetEnv("NETLINK_DOMAINROUTE_ADDR", "127.0.0.1:1080")
+	domainRouteMgr := domainroute.NewManager(relayURL, targetID, domainRouteAddr, client)
+
 	return &DaemonServer{
-		relayURL: relayURL,
-		targetID: targetID,
-		client:   client,
+		relayURL:    relayURL,
+		targetID:    targetID,
+		client:      client,
+		domainRoute: domainRouteMgr,
 	}
 }
 
@@ -59,6 +66,17 @@ func (ds *DaemonServer) Start(port int) error {
 	mux.HandleFunc("/api/auth/device-flow/start", ds.handleDeviceFlowStart)
 	mux.HandleFunc("/api/auth/device-flow/poll", ds.handleDeviceFlowPoll)
 	mux.HandleFunc("/api/auth/logout", ds.handleLogout)
+	mux.HandleFunc("/api/domainroute/status", ds.handleDomainRouteStatus)
+	mux.HandleFunc("/api/domainroute/toggle", ds.handleDomainRouteToggle)
+	mux.HandleFunc("/api/domainroute/rules", ds.handleDomainRouteRules)
+
+	if ds.domainRoute != nil {
+		if err := ds.domainRoute.Start(); err != nil {
+			fmt.Printf("[NetConnect Daemon] Warning: DomainRoute listener failed to start on %s: %v\n", ds.domainRoute.BindAddress(), err)
+		} else {
+			fmt.Printf("[NetConnect Daemon] DomainRoute proxy listening on %s\n", ds.domainRoute.BindAddress())
+		}
+	}
 
 	ds.server = &http.Server{
 		Addr:    fmt.Sprintf("127.0.0.1:%d", port),
@@ -73,6 +91,9 @@ func (ds *DaemonServer) Stop() {
 	ds.mu.Lock()
 	defer ds.mu.Unlock()
 	_ = ds.disconnectLocked()
+	if ds.domainRoute != nil {
+		ds.domainRoute.Stop()
+	}
 	if ds.server != nil {
 		_ = ds.server.Close()
 	}
@@ -128,6 +149,9 @@ func (ds *DaemonServer) handleDeviceFlowStart(w http.ResponseWriter, r *http.Req
 	}
 	if ds.client == nil || ds.client.RelayURL() != ds.relayURL {
 		ds.client = auth.GetOrCreateClient(ds.relayURL)
+	}
+	if ds.domainRoute != nil {
+		ds.domainRoute.UpdateConfig(ds.relayURL, ds.targetID)
 	}
 	client := ds.client
 	deviceName := ds.targetID
@@ -186,6 +210,9 @@ func (ds *DaemonServer) handleDeviceFlowPoll(w http.ResponseWriter, r *http.Requ
 		ds.mu.Lock()
 		if res.TargetID != "" {
 			ds.targetID = res.TargetID
+			if ds.domainRoute != nil {
+				ds.domainRoute.UpdateConfig(ds.relayURL, ds.targetID)
+			}
 		}
 		ds.mu.Unlock()
 	}
@@ -282,6 +309,10 @@ func (ds *DaemonServer) handleSettings(w http.ResponseWriter, r *http.Request) {
 		_ = ds.client.UpdateConfig(ctx, ds.relayURL, ds.targetID)
 	}
 
+	if ds.domainRoute != nil {
+		ds.domainRoute.UpdateConfig(ds.relayURL, ds.targetID)
+	}
+
 	fmt.Printf("[NetConnect Daemon] Settings updated: server=%s, device=%s\n", ds.relayURL, ds.targetID)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]bool{"success": true})
@@ -353,4 +384,111 @@ func (ds *DaemonServer) disconnectLocked() error {
 
 	ds.isConnected = false
 	return nil
+}
+
+func (ds *DaemonServer) handleDomainRouteStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	ds.mu.Lock()
+	dr := ds.domainRoute
+	ds.mu.Unlock()
+
+	if dr == nil {
+		http.Error(w, "DomainRoute manager not initialized", http.StatusInternalServerError)
+		return
+	}
+
+	status := dr.GetStatus()
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(status)
+}
+
+func (ds *DaemonServer) handleDomainRouteToggle(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	ds.mu.Lock()
+	dr := ds.domainRoute
+	ds.mu.Unlock()
+
+	if dr == nil {
+		http.Error(w, "DomainRoute manager not initialized", http.StatusInternalServerError)
+		return
+	}
+
+	var payload struct {
+		Enabled *bool `json:"enabled"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&payload)
+
+	var newState bool
+	if payload.Enabled != nil {
+		newState = *payload.Enabled
+		dr.SetEnabled(newState)
+	} else {
+		newState = dr.ToggleEnabled()
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"success": true,
+		"enabled": newState,
+	})
+}
+
+func (ds *DaemonServer) handleDomainRouteRules(w http.ResponseWriter, r *http.Request) {
+	ds.mu.Lock()
+	dr := ds.domainRoute
+	ds.mu.Unlock()
+
+	if dr == nil {
+		http.Error(w, "DomainRoute manager not initialized", http.StatusInternalServerError)
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		rules := dr.GetRules()
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"rules": rules,
+		})
+
+	case http.MethodPost:
+		var payload struct {
+			Rules  []string `json:"rules"`
+			Action string   `json:"action"`
+			Rule   string   `json:"rule"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			http.Error(w, "Invalid JSON", http.StatusBadRequest)
+			return
+		}
+
+		action := strings.ToLower(strings.TrimSpace(payload.Action))
+		if action == "add" && payload.Rule != "" {
+			dr.AddRule(payload.Rule)
+		} else if action == "remove" && payload.Rule != "" {
+			dr.RemoveRule(payload.Rule)
+		} else if payload.Rules != nil {
+			dr.SetRules(payload.Rules)
+		} else if payload.Rule != "" {
+			dr.AddRule(payload.Rule)
+		}
+
+		rules := dr.GetRules()
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"success": true,
+			"rules":   rules,
+		})
+
+	default:
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+	}
 }
