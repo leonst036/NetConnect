@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 
 	"github.com/leonst036/NetConnect/daemon"
@@ -23,8 +24,14 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
+	portStr := utils.GetEnv("NETCONNECT_PORT", "4545")
+	port := 4545
+	if p, err := strconv.Atoi(portStr); err == nil && p > 0 {
+		port = p
+	}
+
 	go func() {
-		if err := srv.Start(4545); err != nil {
+		if err := srv.Start(port); err != nil {
 			fmt.Printf("[NetConnect Daemon] Server error: %v\n", err)
 		}
 	}()
