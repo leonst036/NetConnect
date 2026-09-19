@@ -1,11 +1,6 @@
-import { Box } from '@mui/material';
-import './GeminiLoader.css';
+import { NetLinkLoader, type NetLinkLoaderProps } from './NetLinkLoader';
 
-export function GeminiLoader({ size = 48 }: { size?: number }) {
-  return (
-    <Box className="loader-container" style={{ width: size, height: size }}>
-      <div className="gemini-blob"></div>
-      <div className="gemini-core"></div>
-    </Box>
-  );
-}
+export { NetLinkLoader as GeminiLoader };
+export type { NetLinkLoaderProps as GeminiLoaderProps };
+export * from './NetLinkLoader';
+export default NetLinkLoader;

@@ -1,0 +1,70 @@
+.loader-container.netlink-loader,
+.netlink-loader {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.netlink-spinner-svg {
+  width: 100%;
+  height: 100%;
+  transform-origin: center;
+}
+
+.netlink-spinner-track {
+  stroke: rgba(56, 189, 248, 0.12);
+  fill: none;
+}
+
+.netlink-spinner-outer {
+  stroke: #38bdf8;
+  stroke-dasharray: 75 50;
+  transform-origin: 24px 24px;
+  animation: netlink-spin 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  fill: none;
+}
+
+.netlink-spinner-inner {
+  stroke: #0ea5e9;
+  stroke-dasharray: 38 38;
+  transform-origin: 24px 24px;
+  animation: netlink-spin-rev 1s linear infinite;
+  fill: none;
+}
+
+.netlink-spinner-node {
+  fill: #38bdf8;
+  transform-origin: 24px 24px;
+  animation: netlink-node-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes netlink-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes netlink-spin-rev {
+  0% {
+    transform: rotate(360deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes netlink-node-pulse {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}

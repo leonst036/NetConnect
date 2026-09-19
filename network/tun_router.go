@@ -24,10 +24,11 @@ type tcpSessionKey struct {
 
 type tcpSession struct {
 	key        tcpSessionKey
-	clientSeq  uint32 // next expected sequence from client
-	serverSeq  uint32 // current sequence from server
+	clientSeq  uint32
+	serverSeq  uint32
 	stream     *netlink.StreamConn
 	pendingBuf []byte
+	lastActive time.Time
 	mu         sync.Mutex
 	closed     bool
 	ifce       *water.Interface
@@ -60,6 +61,8 @@ func NewTUNRouter(ifce *water.Interface, routeManager *DeviceRouteManager, relay
 
 // Start begins processing packets from the TUN device.
 func (tr *TUNRouter) Start() {
+	go tr.cleanupLoop()
+
 	buf := make([]byte, 65535)
 	for {
 		select {
@@ -95,6 +98,37 @@ func (tr *TUNRouter) Start() {
 	}
 }
 
+func (tr *TUNRouter) cleanupLoop() {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-tr.stopChan:
+			return
+		case <-ticker.C:
+			tr.reapStaleSessions()
+		}
+	}
+}
+
+func (tr *TUNRouter) reapStaleSessions() {
+	now := time.Now()
+	tr.mu.Lock()
+	defer tr.mu.Unlock()
+
+	for key, sess := range tr.sessions {
+		sess.mu.Lock()
+		isStale := sess.closed || (!sess.lastActive.IsZero() && now.Sub(sess.lastActive) > 2*time.Minute)
+		sess.mu.Unlock()
+
+		if isStale {
+			delete(tr.sessions, key)
+			sess.close()
+		}
+	}
+}
+
 // Stop stops the router and closes active sessions.
 func (tr *TUNRouter) Stop() {
 	close(tr.stopChan)
@@ -108,7 +142,7 @@ func (tr *TUNRouter) Stop() {
 
 func (tr *TUNRouter) handlePacket(packet []byte) {
 	ihl := int((packet[0] & 0x0F) * 4)
-	if len(packet) < ihl {
+	if ihl < 20 || len(packet) < ihl {
 		return
 	}
 
@@ -140,7 +174,6 @@ func (tr *TUNRouter) handleUDPPacket(packet []byte, ihl int, srcIP, dstIP string
 		return
 	}
 
-	// Intercept DNS queries (port 53)
 	if dstPort == 53 {
 		payload := udpBytes[8:udpLen]
 		go tr.forwardDNSQuery(payload, packet, ihl, srcIP, dstIP, srcPort, dstPort)
@@ -185,7 +218,6 @@ func (tr *TUNRouter) forwardDNSQuery(payload []byte, origPacket []byte, ihl int,
 	totalIPLen := 20 + 8 + len(dnsResponse)
 	reply := make([]byte, totalIPLen)
 
-	// IPv4 Header
 	reply[0] = 0x45
 	reply[1] = 0x00
 	binary.BigEndian.PutUint16(reply[2:4], uint16(totalIPLen))
@@ -193,21 +225,15 @@ func (tr *TUNRouter) forwardDNSQuery(payload []byte, origPacket []byte, ihl int,
 	reply[6] = 0x40
 	reply[7] = 0x00
 	reply[8] = 64
-	reply[9] = 17 // UDP
-	reply[10] = 0
-	reply[11] = 0
-	copy(reply[12:16], origPacket[16:20]) // Src = original Dst
-	copy(reply[16:20], origPacket[12:16]) // Dst = original Src
+	reply[9] = 17
+	copy(reply[12:16], origPacket[16:20])
+	copy(reply[16:20], origPacket[12:16])
 	binary.BigEndian.PutUint16(reply[10:12], Checksum(reply[:20]))
 
-	// UDP Header
-	binary.BigEndian.PutUint16(reply[20:22], dstPort) // 53
+	binary.BigEndian.PutUint16(reply[20:22], dstPort)
 	binary.BigEndian.PutUint16(reply[22:24], srcPort)
 	binary.BigEndian.PutUint16(reply[24:26], uint16(8+len(dnsResponse)))
-	reply[26] = 0
-	reply[27] = 0
 
-	// Payload
 	copy(reply[28:], dnsResponse)
 
 	_, _ = tr.ifce.Write(reply)
@@ -226,7 +252,7 @@ func (tr *TUNRouter) handleTCPPacket(packet []byte, ihl int, srcIP, dstIP string
 	dataOffset := int((tcpBytes[12] >> 4) * 4)
 	flags := tcpBytes[13]
 
-	if len(tcpBytes) < dataOffset {
+	if dataOffset < 20 || len(tcpBytes) < dataOffset {
 		return
 	}
 
@@ -246,15 +272,15 @@ func (tr *TUNRouter) handleTCPPacket(packet []byte, ihl int, srcIP, dstIP string
 	tr.mu.Lock()
 	sess, exists := tr.sessions[key]
 	if !exists && isSYN {
-		// New TCP Connection Request
 		initialServerSeq := rand.Uint32()
 		sess = &tcpSession{
-			key:       key,
-			clientSeq: seq + 1,
-			serverSeq: initialServerSeq + 1,
-			ifce:      tr.ifce,
-			relayURL:  tr.relayURL,
-			targetID:  tr.targetID,
+			key:        key,
+			clientSeq:  seq + 1,
+			serverSeq:  initialServerSeq + 1,
+			lastActive: time.Now(),
+			ifce:       tr.ifce,
+			relayURL:   tr.relayURL,
+			targetID:   tr.targetID,
 		}
 		tr.sessions[key] = sess
 		tr.mu.Unlock()
@@ -263,7 +289,6 @@ func (tr *TUNRouter) handleTCPPacket(packet []byte, ihl int, srcIP, dstIP string
 		mssOption := []byte{0x02, 0x04, 0x05, 0x78}
 		sess.sendTCP(0x12, mssOption, nil, initialServerSeq, seq+1)
 
-		// Connect to destination over NetLink WSS stream in background
 		go sess.startStream(tr)
 		return
 	}
@@ -274,19 +299,31 @@ func (tr *TUNRouter) handleTCPPacket(packet []byte, ihl int, srcIP, dstIP string
 	}
 
 	if isFIN {
+		sess.mu.Lock()
 		sess.clientSeq = seq + 1
-		sess.sendTCP(0x11, nil, nil, sess.serverSeq, sess.clientSeq) // FIN-ACK
+		sSeq := sess.serverSeq
+		cSeq := sess.clientSeq
+		sess.mu.Unlock()
+
+		sess.sendTCP(0x11, nil, nil, sSeq, cSeq) // FIN-ACK
 		tr.removeSession(key)
 		return
 	}
 
 	if len(payload) > 0 {
+		sess.mu.Lock()
 		sess.clientSeq = seq + uint32(len(payload))
+		sSeq := sess.serverSeq
+		cSeq := sess.clientSeq
+		sess.lastActive = time.Now()
+		sess.mu.Unlock()
+
 		sess.handleClientData(payload)
-		// ACK the received data
-		sess.sendTCP(0x10, nil, nil, sess.serverSeq, sess.clientSeq)
+		sess.sendTCP(0x10, nil, nil, sSeq, cSeq)
 	} else if isACK && ack > 0 {
-		// Pure ACK
+		sess.mu.Lock()
+		sess.lastActive = time.Now()
+		sess.mu.Unlock()
 	}
 }
 
@@ -314,8 +351,9 @@ func (s *tcpSession) handleClientData(payload []byte) {
 	if s.stream != nil {
 		_, _ = s.stream.Write(payload)
 	} else {
-		// Buffer data until stream connection is established
-		s.pendingBuf = append(s.pendingBuf, payload...)
+		if len(s.pendingBuf)+len(payload) <= 1024*1024 {
+			s.pendingBuf = append(s.pendingBuf, payload...)
+		}
 	}
 }
 
@@ -344,22 +382,19 @@ func (s *tcpSession) startStream(tr *TUNRouter) {
 	}
 	s.stream = stream
 
-	// Flush any pending data received before stream was ready
 	if len(s.pendingBuf) > 0 {
 		_, _ = stream.Write(s.pendingBuf)
 		s.pendingBuf = nil
 	}
 	s.mu.Unlock()
 
-	// Forward stream incoming bytes back into TUN as TCP packets
-	// Chunk reads to fit within standard MTU (MSS 1400)
 	buf := make([]byte, 1400)
 	for {
 		n, err := stream.Read(buf)
 		if n > 0 {
 			s.mu.Lock()
 			if !s.closed {
-				s.sendTCP(0x18, nil, buf[:n], s.serverSeq, s.clientSeq) // PSH-ACK
+				s.sendTCP(0x18, nil, buf[:n], s.serverSeq, s.clientSeq)
 				s.serverSeq += uint32(n)
 			}
 			s.mu.Unlock()
@@ -370,7 +405,7 @@ func (s *tcpSession) startStream(tr *TUNRouter) {
 			}
 			s.mu.Lock()
 			if !s.closed {
-				s.sendTCP(0x11, nil, nil, s.serverSeq, s.clientSeq) // FIN-ACK
+				s.sendTCP(0x11, nil, nil, s.serverSeq, s.clientSeq)
 				s.closed = true
 			}
 			s.mu.Unlock()
@@ -403,7 +438,6 @@ func (s *tcpSession) sendTCP(flags byte, options, payload []byte, seq, ack uint3
 		return
 	}
 
-	// Calculate TCP header length with options (padded to 4-byte boundary)
 	optLen := len(options)
 	if optLen%4 != 0 {
 		pad := 4 - (optLen % 4)
@@ -415,19 +449,18 @@ func (s *tcpSession) sendTCP(flags byte, options, payload []byte, seq, ack uint3
 	ipTotalLen := 20 + tcpHeaderLen + len(payload)
 	packet := make([]byte, ipTotalLen)
 
-	// IP Header (20 bytes)
-	packet[0] = 0x45 // Version 4, IHL 5
-	packet[1] = 0x00 // TOS
+	// IP Header
+	packet[0] = 0x45
+	packet[1] = 0x00
 	binary.BigEndian.PutUint16(packet[2:4], uint16(ipTotalLen))
 	binary.BigEndian.PutUint16(packet[4:6], uint16(rand.Intn(65535)))
-	binary.BigEndian.PutUint16(packet[6:8], 0x4000) // DF set
-	packet[8] = 64                                 // TTL
-	packet[9] = 6                                  // Protocol: TCP
+	binary.BigEndian.PutUint16(packet[6:8], 0x4000)
+	packet[8] = 64
+	packet[9] = 6
 	copy(packet[12:16], srcIP)
 	copy(packet[16:20], dstIP)
 
-	// IP Checksum
-	ipChecksum := calcChecksum(packet[:20])
+	ipChecksum := Checksum(packet[:20])
 	binary.BigEndian.PutUint16(packet[10:12], ipChecksum)
 
 	// TCP Header
@@ -439,37 +472,20 @@ func (s *tcpSession) sendTCP(flags byte, options, payload []byte, seq, ack uint3
 	dataOffsetWords := byte(tcpHeaderLen / 4)
 	packet[tcpOffset+12] = dataOffsetWords << 4
 	packet[tcpOffset+13] = flags
-	binary.BigEndian.PutUint16(packet[tcpOffset+14:tcpOffset+16], 65535) // Window size
+	binary.BigEndian.PutUint16(packet[tcpOffset+14:tcpOffset+16], 65535)
 
-	// Copy TCP options if any
 	if optLen > 0 {
 		copy(packet[tcpOffset+20:tcpOffset+20+optLen], options)
 	}
 
-	// Copy payload if any
 	if len(payload) > 0 {
 		copy(packet[tcpOffset+tcpHeaderLen:], payload)
 	}
 
-	// TCP Checksum (Pseudo-header + TCP segment)
 	tcpChecksum := calcTCPChecksum(srcIP, dstIP, packet[tcpOffset:])
 	binary.BigEndian.PutUint16(packet[tcpOffset+16:tcpOffset+18], tcpChecksum)
 
 	_, _ = s.ifce.Write(packet)
-}
-
-func calcChecksum(b []byte) uint16 {
-	var sum uint32
-	for i := 0; i < len(b)-1; i += 2 {
-		sum += uint32(binary.BigEndian.Uint16(b[i : i+2]))
-	}
-	if len(b)%2 == 1 {
-		sum += uint32(b[len(b)-1]) << 8
-	}
-	for sum > 0xffff {
-		sum = (sum & 0xffff) + (sum >> 16)
-	}
-	return ^uint16(sum)
 }
 
 func calcTCPChecksum(srcIP, dstIP net.IP, tcpSegment []byte) uint16 {

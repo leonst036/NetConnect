@@ -33,3 +33,19 @@ func TestDNSManagerExtractRelayHost(t *testing.T) {
 		t.Errorf("expected 127.0.0.1 for localhost, got %s", hostLocal)
 	}
 }
+
+func TestIsValidHostname(t *testing.T) {
+	valid := []string{"example.com", "my-host", "node_1.netlink", "a", "sub.domain.local"}
+	for _, h := range valid {
+		if !isValidHostname(h) {
+			t.Errorf("expected %q to be valid", h)
+		}
+	}
+
+	invalid := []string{"", "bad host", "host\nname", "host\rname", "host\tname", "evil/path"}
+	for _, h := range invalid {
+		if isValidHostname(h) {
+			t.Errorf("expected %q to be invalid", h)
+		}
+	}
+}

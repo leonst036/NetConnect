@@ -262,17 +262,37 @@ func (dm *DNSManager) updateHostsFile(records map[string]string, suffix string) 
 
 	sb.WriteString(hostsBeginMarker + "\n")
 	for domain, ip := range records {
-		cleanDomain := strings.TrimSuffix(domain, ".")
+		cleanIP := strings.TrimSpace(ip)
+		if net.ParseIP(cleanIP) == nil {
+			continue
+		}
+		cleanDomain := strings.TrimSuffix(strings.TrimSpace(domain), ".")
+		if !isValidHostname(cleanDomain) {
+			continue
+		}
 		shortName := strings.TrimSuffix(cleanDomain, "."+suffix)
-		if shortName != cleanDomain {
-			sb.WriteString(fmt.Sprintf("%s\t%s\t%s\n", ip, cleanDomain, shortName))
+		if shortName != cleanDomain && isValidHostname(shortName) {
+			sb.WriteString(fmt.Sprintf("%s\t%s\t%s\n", cleanIP, cleanDomain, shortName))
 		} else {
-			sb.WriteString(fmt.Sprintf("%s\t%s\n", ip, cleanDomain))
+			sb.WriteString(fmt.Sprintf("%s\t%s\n", cleanIP, cleanDomain))
 		}
 	}
 	sb.WriteString(hostsEndMarker + "\n")
 
 	return os.WriteFile("/etc/hosts", []byte(sb.String()), 0644)
+}
+
+func isValidHostname(h string) bool {
+	if len(h) == 0 || len(h) > 253 {
+		return false
+	}
+	for _, c := range h {
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '.' || c == '_' {
+			continue
+		}
+		return false
+	}
+	return true
 }
 
 func (dm *DNSManager) cleanHostsFile() error {

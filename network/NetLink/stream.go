@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -19,10 +20,11 @@ import (
 type StreamConn struct {
 	ws        *websocket.Conn
 	reader    io.Reader
-	mu        sync.Mutex
+	readMu    sync.Mutex
+	writeMu   sync.Mutex
 	localAddr net.Addr
 	remAddr   net.Addr
-	closed    bool
+	closed    atomic.Bool
 }
 
 // DialLANStream dials a destination IP:port on the remote LAN via the NetLink relay WSS tunnel.
@@ -83,10 +85,10 @@ func DialLANStream(ctx context.Context, relayURL, targetID, destIP string, destP
 }
 
 func (s *StreamConn) Read(b []byte) (n int, err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.readMu.Lock()
+	defer s.readMu.Unlock()
 
-	if s.closed {
+	if s.closed.Load() {
 		return 0, io.EOF
 	}
 
@@ -120,10 +122,10 @@ func (s *StreamConn) Read(b []byte) (n int, err error) {
 }
 
 func (s *StreamConn) Write(b []byte) (n int, err error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
 
-	if s.closed {
+	if s.closed.Load() {
 		return 0, io.ErrClosedPipe
 	}
 
@@ -135,15 +137,13 @@ func (s *StreamConn) Write(b []byte) (n int, err error) {
 }
 
 func (s *StreamConn) Close() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if s.closed {
-		return nil
+	if s.closed.CompareAndSwap(false, true) {
+		s.writeMu.Lock()
+		defer s.writeMu.Unlock()
+		_ = s.ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+		return s.ws.Close()
 	}
-	s.closed = true
-	_ = s.ws.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-	return s.ws.Close()
+	return nil
 }
 
 func (s *StreamConn) LocalAddr() net.Addr                { return s.localAddr }

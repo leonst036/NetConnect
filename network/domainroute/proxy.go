@@ -125,14 +125,14 @@ func (p *ProxyListener) handleConn(conn net.Conn) {
 
 	if firstByte[0] == 0x05 {
 		targetHost, targetPort, err = p.handshakeSOCKS5(conn, br)
-	} else if firstByte[0] == 'C' {
+	} else if firstByte[0] == 'C' || firstByte[0] == 'c' {
 		targetHost, targetPort, err = p.handshakeHTTP(conn, br)
 	} else {
 		_ = conn.Close()
 		return
 	}
 
-	if err != nil {
+	if err != nil || strings.TrimSpace(targetHost) == "" {
 		_ = conn.Close()
 		return
 	}
@@ -205,6 +205,9 @@ func (p *ProxyListener) handshakeSOCKS5(conn net.Conn, br *bufio.Reader) (string
 		if err != nil {
 			return "", 0, err
 		}
+		if dLen == 0 {
+			return "", 0, errors.New("empty socks5 domain")
+		}
 		domain := make([]byte, int(dLen))
 		if _, err := io.ReadFull(br, domain); err != nil {
 			return "", 0, err
@@ -219,6 +222,11 @@ func (p *ProxyListener) handshakeSOCKS5(conn net.Conn, br *bufio.Reader) (string
 	default:
 		_, _ = conn.Write([]byte{0x05, 0x08, 0x00, 0x01, 0, 0, 0, 0, 0, 0})
 		return "", 0, fmt.Errorf("unsupported socks5 address type: %d", atyp)
+	}
+
+	targetHost = strings.TrimSpace(targetHost)
+	if targetHost == "" {
+		return "", 0, errors.New("empty socks5 target host")
 	}
 
 	var portBuf [2]byte
@@ -265,13 +273,21 @@ func (p *ProxyListener) handshakeHTTP(conn net.Conn, br *bufio.Reader) (string, 
 		targetHost = target
 	}
 
-	for {
+	targetHost = strings.TrimSpace(targetHost)
+	if targetHost == "" {
+		return "", 0, errors.New("empty http connect target host")
+	}
+
+	for i := 0; i < 64; i++ {
 		headerLine, err := br.ReadString('\n')
 		if err != nil {
 			return "", 0, err
 		}
 		if strings.TrimRight(headerLine, "\r\n") == "" {
 			break
+		}
+		if i == 63 {
+			return "", 0, errors.New("too many http headers")
 		}
 	}
 

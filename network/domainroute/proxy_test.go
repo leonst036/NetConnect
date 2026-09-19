@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"net"
 	"strconv"
@@ -321,5 +322,69 @@ func TestProxyListenerHTTPConnectBypass(t *testing.T) {
 
 	if !bytes.Equal(recv, testData) {
 		t.Fatalf("expected %q, got %q", testData, recv)
+	}
+}
+
+func TestSOCKS5EmptyDomain(t *testing.T) {
+	serverConn, clientConn := net.Pipe()
+	defer serverConn.Close()
+	defer clientConn.Close()
+
+	proxy := &ProxyListener{
+		rules: NewRuleEngine(),
+		stats: &Stats{},
+	}
+
+	errChan := make(chan error, 1)
+	go func() {
+		br := bufio.NewReader(serverConn)
+		_, _, err := proxy.handshakeSOCKS5(serverConn, br)
+		errChan <- err
+	}()
+
+	// Greeting
+	_, _ = clientConn.Write([]byte{0x05, 0x01, 0x00})
+	reply := make([]byte, 2)
+	_, _ = io.ReadFull(clientConn, reply)
+
+	// CONNECT with domain length 0
+	req := []byte{0x05, 0x01, 0x00, 0x03, 0x00, 0x01, 0xBB}
+	_, _ = clientConn.Write(req)
+
+	err := <-errChan
+	if err == nil {
+		t.Fatal("expected error on empty socks5 domain, got nil")
+	}
+}
+
+func TestHTTPConnectHeaderLimit(t *testing.T) {
+	serverConn, clientConn := net.Pipe()
+	defer serverConn.Close()
+	defer clientConn.Close()
+
+	proxy := &ProxyListener{
+		rules: NewRuleEngine(),
+		stats: &Stats{},
+	}
+
+	errChan := make(chan error, 1)
+	go func() {
+		br := bufio.NewReader(serverConn)
+		_, _, err := proxy.handshakeHTTP(serverConn, br)
+		errChan <- err
+	}()
+
+	var req bytes.Buffer
+	req.WriteString("CONNECT example.com:443 HTTP/1.1\r\n")
+	for i := 0; i < 70; i++ {
+		req.WriteString(fmt.Sprintf("X-Header-%d: test\r\n", i))
+	}
+	req.WriteString("\r\n")
+
+	_, _ = clientConn.Write(req.Bytes())
+
+	err := <-errChan
+	if err == nil {
+		t.Fatal("expected error on header limit exceeded, got nil")
 	}
 }

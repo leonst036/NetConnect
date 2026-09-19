@@ -9,8 +9,11 @@ import (
 
 // HandleICMPEcho handles incoming ICMP Echo Requests and sends an Echo Reply back to the TUN interface.
 func HandleICMPEcho(ifce *water.Interface, packet []byte, n int) {
+	if ifce == nil || n < 20 || len(packet) < 20 {
+		return
+	}
 	ihl := int((packet[0] & 0x0F) * 4)
-	if n < ihl+8 {
+	if ihl < 20 || n < ihl+8 || len(packet) < ihl+8 || len(packet) < n {
 		return
 	}
 

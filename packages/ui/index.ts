@@ -14,5 +14,6 @@ export const getAppTheme = (themeName: string) => {
     });
 };
 
-export * from './components/GeminiLoader';
+export * from './components/NetLinkLoader';
+export { GeminiLoader, type GeminiLoaderProps } from './components/GeminiLoader';
 export * from './components/WindowLayout';
