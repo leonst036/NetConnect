@@ -14,6 +14,7 @@ import (
 type Client struct {
 	relayURL   string
 	targetID   string
+	deviceID   string
 	token      string
 	ticket     string
 	username   string
@@ -38,19 +39,18 @@ func NewClientWithTarget(relayURL, targetID string) *Client {
 	}
 	relayURL = strings.TrimRight(relayURL, "/")
 
+	deviceID := utils.GetEnv("NETLINK_DEVICE_ID", "")
+	if deviceID == "" {
+		hostname, err := os.Hostname()
+		if err == nil && hostname != "" {
+			deviceID = "netconnect-" + hostname
+		} else {
+			deviceID = "netconnect-device"
+		}
+	}
+
 	if targetID == "" {
 		targetID = utils.GetEnv("NETLINK_TARGET_ID", "")
-		if targetID == "" {
-			targetID = utils.GetEnv("NETLINK_DEVICE_ID", "")
-		}
-		if targetID == "" {
-			hostname, err := os.Hostname()
-			if err == nil && hostname != "" {
-				targetID = "netconnect-" + hostname
-			} else {
-				targetID = "netconnect-device"
-			}
-		}
 	}
 
 	token := utils.GetEnv("NETLINK_TOKEN", "")
@@ -61,6 +61,7 @@ func NewClientWithTarget(relayURL, targetID string) *Client {
 	return &Client{
 		relayURL: relayURL,
 		targetID: targetID,
+		deviceID: deviceID,
 		token:    token,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
@@ -118,6 +119,13 @@ func (c *Client) TargetID() string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.targetID
+}
+
+// DeviceID returns the client device ID.
+func (c *Client) DeviceID() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.deviceID
 }
 
 // Token returns the current device token.

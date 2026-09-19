@@ -3,31 +3,45 @@ package network
 import (
 	"fmt"
 	"net"
+	"os"
 )
 
-// DetectCIDR returns the primary local network CIDR
+// DetectCIDR returns a virtual overlay CIDR for the TUN interface that does not conflict with local networks.
 func DetectCIDR() (string, error) {
-	// Try routing lookup via UDP to find the outbound interface IP
-	conn, err := net.Dial("udp", "8.8.8.8:80")
-	if err == nil {
-		defer conn.Close()
-		localIP := conn.LocalAddr().(*net.UDPAddr).IP
+	if envCIDR := os.Getenv("NETLINK_OVERLAY_CIDR"); envCIDR != "" {
+		return envCIDR, nil
+	}
 
-		if cidr, ok := findCIDRForIP(localIP); ok {
-			return cidr, nil
+	candidates := []string{
+		"10.200.0.2/24",
+		"100.96.0.2/24",
+		"172.28.0.2/24",
+		"10.88.0.2/24",
+	}
+
+	localSubnets, _ := DetectSubnets()
+	for _, candidate := range candidates {
+		_, candNet, err := net.ParseCIDR(candidate)
+		if err != nil {
+			continue
+		}
+		conflict := false
+		for _, local := range localSubnets {
+			_, locNet, err := net.ParseCIDR(local)
+			if err != nil {
+				continue
+			}
+			if candNet.Contains(locNet.IP) || locNet.Contains(candNet.IP) {
+				conflict = true
+				break
+			}
+		}
+		if !conflict {
+			return candidate, nil
 		}
 	}
 
-	// Fallback to first available local subnet
-	subnets, err := DetectSubnets()
-	if err != nil {
-		return "", err
-	}
-	if len(subnets) == 0 {
-		return "", fmt.Errorf("no active IPv4 network interface found")
-	}
-
-	return subnets[0], nil
+	return "10.200.0.2/24", nil
 }
 
 // DetectSubnets returns all active local IPv4 subnets in CIDR format

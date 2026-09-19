@@ -14,14 +14,14 @@ import (
 
 const prefix = "[NetLink Ping]"
 
-// Ping sends an HTTP GET request to the NetLink relay ping endpoint using the ticket system.
+// Ping sends an HTTP GET request to the NetLink relay ping endpoint using Bearer authentication.
 func Ping(relayURL string, timeout time.Duration) (string, error) {
 	client := auth.GetOrCreateClient(relayURL)
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	resp, err := client.Get(ctx, "/api/netconnect/ping")
+	resp, err := client.RequestWithBearer(ctx, http.MethodGet, "/api/netconnect/ping", nil)
 	if err != nil {
 		return "", fmt.Errorf(prefix+" ping failed: %w", err)
 	}

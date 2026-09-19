@@ -90,3 +90,24 @@ func (c *Client) Post(ctx context.Context, endpoint string, contentType string, 
 
 	return c.Do(req)
 }
+
+// RequestWithBearer performs an HTTP request using direct Bearer token authentication.
+func (c *Client) RequestWithBearer(ctx context.Context, method, endpoint string, body io.Reader) (*http.Response, error) {
+	token, err := c.GetToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get token: %w", err)
+	}
+
+	url := endpoint
+	if !strings.HasPrefix(url, "http://") && !strings.HasPrefix(url, "https://") {
+		url = fmt.Sprintf("%s/%s", c.relayURL, strings.TrimPrefix(endpoint, "/"))
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, url, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	return c.httpClient.Do(req)
+}

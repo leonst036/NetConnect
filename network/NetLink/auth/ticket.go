@@ -50,8 +50,9 @@ func (c *Client) GetTicket(ctx context.Context) (string, error) {
 // requests a new ticket from /api/auth/ticket.
 func (c *Client) requestTicket(ctx context.Context, token string) (string, error) {
 	endpoint := fmt.Sprintf("%s/api/auth/ticket", c.relayURL)
-	payload := map[string]string{
-		"target": c.targetID,
+	payload := map[string]string{}
+	if c.targetID != "" {
+		payload["target"] = c.targetID
 	}
 	jsonBody, err := json.Marshal(payload)
 	if err != nil {

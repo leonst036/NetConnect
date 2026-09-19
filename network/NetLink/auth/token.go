@@ -72,7 +72,14 @@ func (c *Client) getTokenLocked(ctx context.Context) (string, error) {
 
 // requestDeviceToken requests a device JWT token via /api/validate-target.
 func (c *Client) requestDeviceToken(ctx context.Context) (string, error) {
-	return c.requestDeviceTokenFor(ctx, c.relayURL, c.targetID)
+	devID := c.deviceID
+	if devID == "" {
+		devID = c.targetID
+	}
+	if devID == "" {
+		devID = "netconnect-device"
+	}
+	return c.requestDeviceTokenFor(ctx, c.relayURL, devID)
 }
 
 // requestDeviceTokenFor requests a device JWT token for a specified relay URL and target ID.

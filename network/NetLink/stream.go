@@ -30,9 +30,21 @@ type StreamConn struct {
 // DialLANStream dials a destination IP:port on the remote LAN via the NetLink relay WSS tunnel.
 func DialLANStream(ctx context.Context, relayURL, targetID, destIP string, destPort int) (*StreamConn, error) {
 	client := auth.GetOrCreateClient(relayURL)
+
+	header := http.Header{}
+	var authQuery string
+
 	ticket, err := client.GetTicket(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get ticket for stream: %w", err)
+	if err == nil && ticket != "" {
+		authQuery = "ticket=" + url.QueryEscape(ticket)
+		header.Set("Authorization", "Ticket "+ticket)
+	} else {
+		token, tokenErr := client.GetToken(ctx)
+		if tokenErr != nil {
+			return nil, fmt.Errorf("failed to get ticket (%v) or token (%w) for stream", err, tokenErr)
+		}
+		authQuery = "token=" + url.QueryEscape(token)
+		header.Set("Authorization", "Bearer "+token)
 	}
 
 	wsURL := relayURL
@@ -49,20 +61,17 @@ func DialLANStream(ctx context.Context, relayURL, targetID, destIP string, destP
 		targetID = client.TargetID()
 	}
 
-	endpoint := fmt.Sprintf("%s/netconnect/stream?target=%s&destIP=%s&destPort=%d&ticket=%s",
+	endpoint := fmt.Sprintf("%s/netconnect/stream?target=%s&destIP=%s&destPort=%d&%s",
 		wsURL,
 		url.QueryEscape(targetID),
 		url.QueryEscape(destIP),
 		destPort,
-		url.QueryEscape(ticket),
+		authQuery,
 	)
 
 	dialer := websocket.Dialer{
 		HandshakeTimeout: 10 * time.Second,
 	}
-
-	header := http.Header{}
-	header.Set("Authorization", "Ticket "+ticket)
 
 	ws, resp, err := dialer.DialContext(ctx, endpoint, header)
 	if err != nil {
